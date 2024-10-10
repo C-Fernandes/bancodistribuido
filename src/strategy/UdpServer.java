@@ -22,9 +22,10 @@ public class UdpServer {
                 socket.receive(receivePacket);
                 String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
                 System.out.println("Mensagem recebida: " + message);
-
-                String responseMessage = message.toUpperCase(); // Exemplo de processamento
-
+                String responseMessage = message.toUpperCase();
+                if (message.equals("ping")) {
+                    responseMessage = "pong"; // Exemplo de processamento
+                }
                 byte[] sendData = responseMessage.getBytes();
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();

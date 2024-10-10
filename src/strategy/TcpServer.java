@@ -10,8 +10,6 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import Servers.TCPServer;
-
 public class TcpServer implements RequestHandler {
     @Override
     public void handleRequest(String request) {
@@ -44,7 +42,7 @@ public class TcpServer implements RequestHandler {
     }
 
     public static void main(String[] args) throws IOException {
-        new TCPServer(args[0]).service();
+        new TcpServer(args[0]).service();
     }
 }
 
