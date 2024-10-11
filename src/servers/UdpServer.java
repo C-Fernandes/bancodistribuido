@@ -1,4 +1,4 @@
-package strategy;
+package servers;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -21,7 +21,9 @@ public class UdpServer {
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 socket.receive(receivePacket);
                 String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
-                System.out.println("Mensagem recebida: " + message);
+                if (!message.equals("ping")) {
+                    System.out.println("Mensagem recebida: " + message);
+                }
                 String responseMessage = message.toUpperCase();
                 if (message.equals("ping")) {
                     responseMessage = "pong"; // Exemplo de processamento
@@ -32,7 +34,9 @@ public class UdpServer {
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
 
                 socket.send(sendPacket);
-                System.out.println("Resposta enviada: " + responseMessage);
+                if (!message.equals("ping")) {
+                    System.out.println("Resposta enviada: " + responseMessage);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,4 +1,4 @@
-package strategy;
+package servers;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,6 +9,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import gateway.RequestHandler;
 
 public class TcpServer implements RequestHandler {
     @Override
