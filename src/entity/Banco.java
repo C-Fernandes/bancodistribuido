@@ -1,24 +1,27 @@
 package entity;
 
+import repository.DataBaseConnection;
+import service.BancoService;
+import service.ContaService;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class Banco {
-    private int id; // Identificador único do banco
+public class Banco { // Identificador único do banco
     private String nome; // Nome do banco
     private List<Conta> contas;
+    private BancoService bancoService;
+
+    public Banco() {
+        this.contas = new ArrayList<>();
+        this.dataBaseConnection = new DataBaseConnection();
+        this.contaService = new ContaService();
+    }
 
     public Banco(String nome) {
         this.contas = new ArrayList<>();
     }
 
-    public Banco() {
-        this.contas = new ArrayList<>();
-    }
-
-    public void deletarConta(String conta, String agencia) {
-
-    }
 
     public String getNome() {
         return nome;

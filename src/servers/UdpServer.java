@@ -42,4 +42,11 @@ public class UdpServer {
             e.printStackTrace();
         }
     }
+    String[] processMessage(String message) {
+        String[] parts = message.split("-");
+        if (parts.length == 0) {
+            return null; // Retorna nulo se não houver partes
+        }
+        return parts; // Retorna as partes da mensagem separadas
+    }
 }

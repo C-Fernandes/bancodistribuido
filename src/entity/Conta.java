@@ -5,6 +5,13 @@ public class Conta {
     private double saldo;
     private Banco banco;
 
+    public Conta(String conta, String agencia, double saldo, Banco banco) {
+        this.conta = conta;
+        this.agencia = agencia;
+        this.saldo = saldo;
+        this.banco = banco;
+    }
+
     public Conta(String conta, String agencia, double saldo) {
         this.conta = conta;
         this.agencia = agencia;
@@ -16,6 +23,9 @@ public class Conta {
         this.conta = conta;
         this.agencia = agencia;
         this.saldo = 0;
+    }
+
+    public Conta() {
     }
 
     public String getConta() {
@@ -40,5 +50,13 @@ public class Conta {
 
     public void setAgencia(String agencia) {
         this.agencia = agencia;
+    }
+
+    public Banco getBanco() {
+        return banco;
+    }
+
+    public void setBanco(Banco banco) {
+        this.banco = banco;
     }
 }
