@@ -1,14 +1,13 @@
 package br.imd.repository;
 
-
-import br.imd.entity.Conta;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import br.imd.entity.Conta;
 
 public class ContaRepository {
     private DataBaseConnection databaseConnection;
@@ -19,7 +18,7 @@ public class ContaRepository {
 
     // Método para criar uma nova conta
     public void criarConta(Connection conn, Conta conta) throws SQLException {
-        String sql = "INSERT INTO contas (banco_nome, agencia, conta, saldo) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO conta (banco, agencia, conta, saldo) VALUES (?, ?, ?, ?)";
         boolean closeConnection = false;
 
         if (conn == null) {
@@ -40,7 +39,7 @@ public class ContaRepository {
                 try {
                     conn.close(); // Fecha a conexão se foi criada aqui
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    e.getMessage();
                 }
             }
         }
@@ -48,7 +47,7 @@ public class ContaRepository {
 
     // Método para buscar uma conta pelo número e agência
     public Conta buscarConta(Connection conn, String banco, String agencia, String conta) throws SQLException {
-        String sql = "SELECT * FROM contas WHERE banco_nome = ? AND agencia = ? AND conta = ?";
+        String sql = "SELECT * FROM conta WHERE banco = ? AND agencia = ? AND conta = ?";
         Conta contaResult = null;
         boolean closeConnection = false;
 
@@ -56,7 +55,6 @@ public class ContaRepository {
             conn = databaseConnection.getConnection(); // Cria uma nova conexão
             closeConnection = true; // Marca para fechar a conexão depois
         }
-
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, banco);
             pstmt.setString(2, agencia);
@@ -73,17 +71,18 @@ public class ContaRepository {
                 try {
                     conn.close(); // Fecha a conexão se foi criada aqui
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    e.getMessage();
                 }
             }
         }
-
+        contaResult.toString();
+        System.out.println(contaResult);
         return contaResult;
     }
 
     // Método para listar todas as contas
     public List<Conta> listarContas(Connection conn) throws SQLException {
-        String sql = "SELECT * FROM contas";
+        String sql = "SELECT * FROM conta";
         List<Conta> contas = new ArrayList<>();
         boolean closeConnection = false;
 
@@ -105,7 +104,7 @@ public class ContaRepository {
                 try {
                     conn.close(); // Fecha a conexão se foi criada aqui
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    e.getMessage();
                 }
             }
         }
@@ -115,7 +114,7 @@ public class ContaRepository {
 
     // Método para atualizar o saldo de uma conta
     public void atualizarSaldo(Connection conn, Conta conta) throws SQLException {
-        String sql = "UPDATE Conta SET saldo = ? WHERE banco_nome = ? AND agencia = ? AND conta = ?";
+        String sql = "UPDATE Conta SET saldo = ? WHERE banco = ? AND agencia = ? AND conta = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, conta.getSaldo()); // Define o novo saldo
@@ -131,14 +130,14 @@ public class ContaRepository {
                                                                                               // atualizada
             }
         } catch (SQLException e) {
-            e.printStackTrace(); // Registra a exceção
+            e.getMessage(); // Registra a exceção
             throw e; // Re-lança a exceção para o tratamento adequado em outros níveis
         }
     }
 
     // Método para excluir uma conta
     public void excluirConta(Connection conn, String banco, String agencia, String conta) throws SQLException {
-        String sql = "DELETE FROM contas WHERE banco_nome=? AND agencia = ? AND  conta = ? ";
+        String sql = "DELETE FROM conta WHERE banco=? AND agencia = ? AND  conta = ? ";
         boolean closeConnection = false;
 
         if (conn == null) {
@@ -157,7 +156,7 @@ public class ContaRepository {
                 try {
                     conn.close(); // Fecha a conexão se foi criada aqui
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    e.getMessage();
                 }
             }
         }
@@ -167,7 +166,11 @@ public class ContaRepository {
             throws SQLException {
         // SQL para buscar a conta considerando banco, agência e conta, e bloqueando a
         // linha para atualização
-        String sql = "SELECT * FROM Conta WHERE banco_nome = ? AND agencia = ? AND conta = ? FOR UPDATE";
+        String sql = "SELECT * FROM Conta WHERE banco = ? AND agencia = ? AND conta = ? FOR UPDATE";
+
+        System.out.println(bancoNome);
+        System.out.println(agencia);
+        System.out.println(conta);
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bancoNome);
             stmt.setString(2, agencia);

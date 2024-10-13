@@ -59,4 +59,15 @@ public class Conta {
     public void setBanco(Banco banco) {
         this.banco = banco;
     }
+
+    @Override
+    public String toString() {
+        return "{" +
+                " conta='" + getConta() + "'" +
+                ", agencia='" + getAgencia() + "'" +
+                ", saldo='" + getSaldo() + "'" +
+                ", banco='" + getBanco() + "'" +
+                "}";
+    }
+
 }

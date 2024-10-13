@@ -1,12 +1,11 @@
 package br.imd.service;
 
-
-import br.imd.entity.Conta;
-import br.imd.repository.ContaRepository;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+
+import br.imd.entity.Conta;
+import br.imd.repository.ContaRepository;
 
 public class ContaService {
     private ContaRepository contaRepository;
@@ -21,6 +20,7 @@ public class ContaService {
         // Verifica se a conta já existe
         Conta contaExistente = contaRepository.buscarConta(conn, conta.getBanco().getNome(), conta.getAgencia(),
                 conta.getConta());
+        contaExistente.toString();
         if (contaExistente != null) {
             throw new IllegalArgumentException("A conta já existe no banco informado.");
         }
@@ -96,6 +96,7 @@ public class ContaService {
 
     // Método para atualizar o saldo de uma conta
     public void atualizarSaldo(Connection conn, Conta conta) throws SQLException {
+
         contaRepository.atualizarSaldo(conn, conta);
     }
 

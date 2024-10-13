@@ -1,13 +1,13 @@
 package br.imd.repository;
 
-import br.imd.entity.Banco;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+import br.imd.entity.Banco;
 
 public class BancoRepository {
     private DataBaseConnection databaseConnection;
@@ -18,45 +18,49 @@ public class BancoRepository {
 
     // Método para criar um novo banco
     public void criarBanco(Banco banco) {
-        String sql = "INSERT INTO bancos (nome) VALUES (?)";
+        String sql = "INSERT INTO banco (nome) VALUES (?)";
 
-        try (Connection conn = databaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = databaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, banco.getNome());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.getMessage();
         }
     }
 
     // Método para buscar um banco pelo nome
     public Banco buscarBanco(String nome) {
-        String sql = "SELECT * FROM bancos WHERE nome = ?";
+        String sql = "SELECT * FROM banco WHERE nome = ?";
         Banco banco = null;
-        try (Connection conn = databaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = databaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nome);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 banco = new Banco(rs.getString("nome"));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.getMessage();
         }
         return banco;
     }
 
     // Método para listar todos os bancos
     public List<Banco> listarBancos() {
-        String sql = "SELECT * FROM bancos";
+        String sql = "SELECT * FROM banco";
         List<Banco> bancos = new ArrayList<>();
 
-        try (Connection conn = databaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql); ResultSet rs = pstmt.executeQuery()) {
+        try (Connection conn = databaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
                 Banco banco = new Banco(rs.getString("nome"));
                 bancos.add(banco);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.getMessage();
         }
 
         return bancos;
@@ -64,13 +68,14 @@ public class BancoRepository {
 
     // Método para excluir um banco
     public void excluirBanco(String nome) {
-        String sql = "DELETE FROM bancos WHERE nome = ?";
+        String sql = "DELETE FROM banco WHERE nome = ?";
 
-        try (Connection conn = databaseConnection.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = databaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nome);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.getMessage();
         }
     }
 }

@@ -14,14 +14,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-
 import java.util.concurrent.TimeUnit;
 
 /**
  * Classe Heartbeat que monitora a saúde dos servidores ativos e inativos.
  */
 public class Heartbeat implements Runnable {
-    private static final int SERVER_TIMEOUT = 2000; // Timeout em ms
+    private static final int SERVER_TIMEOUT = 4000; // Timeout em ms
     private final ScheduledExecutorService scheduler; // Executor para verificação periódica
     private DatagramSocket udpSocket; // Socket UDP para reutilização
     private final Set<Integer> activeServers; // Conjunto de servidores ativos
@@ -52,7 +51,6 @@ public class Heartbeat implements Runnable {
      * Verifica a saúde dos servidores ativos e inativos.
      */
     private void checkServers() {
-        System.out.println("Verificando servidores...");
         checkActiveServers();
         checkInactiveServers();
     }
@@ -64,13 +62,13 @@ public class Heartbeat implements Runnable {
             boolean isUDPAlive = isUDPServerAlive(port);
 
             if (!isTCPAlive && !isUDPAlive) {
-                // System.out.printf("Servidor na porta %d inativo. Movendo para inativos.%n",
-                // port);
+                System.out.printf("Servidor na porta %d inativo. Movendo para inativos.%n",
+                        port);
                 activeServers.remove(port);
                 inactiveServers.add(port);
             } else {
-                // System.out.printf("Servidor na porta %d está ativo. TCP: %s, UDP: %s%n",
-                // port, isTCPAlive, isUDPAlive);
+                System.out.printf("Servidor na porta %d está ativo. TCP: %s, UDP: %s%n",
+                        port, isTCPAlive, isUDPAlive);
             }
         }
     }
@@ -87,13 +85,13 @@ public class Heartbeat implements Runnable {
             // Verifica se o servidor está ativo em ambos os protocolos antes de mover para
             // ativos
             if (isTCPAlive || isUDPAlive) {
-                // System.out.printf("Servidor na porta %d voltou a ficar ativo. Movendo para
-                // ativos.%n", port);
+                System.out.printf("Servidor na porta %d voltou a ficar ativo. Movendo para                ativos.%n",
+                        port);
                 inactiveServers.remove(port);
                 activeServers.add(port);
             } else {
-                // System.out.printf("Servidor na porta %d ainda está inativo. TCP: %s, UDP:
-                // %s%n", port, isTCPAlive,isUDPAlive);
+                System.out.printf("Servidor na porta %d ainda está inativo. TCP: %s, UDP: %s%n", port, isTCPAlive,
+                        isUDPAlive);
             }
         }
     }
@@ -138,6 +136,8 @@ public class Heartbeat implements Runnable {
             // Aguardar e ler a resposta do servidor
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             String response = in.readLine();
+
+            System.out.printf("Resposta recebida do servidor na porta %d: %s%n", port, response); // Adicionando log
 
             // Verifica se a resposta é "pong"
             return "pong".equalsIgnoreCase(response);

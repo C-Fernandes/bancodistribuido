@@ -28,10 +28,10 @@ public class BankManager {
             conn = dataBaseConnection.getConnection();
             conn.setAutoCommit(false); // Desativa o auto-commit para iniciar a transação
 
-            Conta contaOrigem = bancoService.prepararParaSaque(bancoOrigemNome, conn, agenciaOrigem, agenciaOrigem,
+            Conta contaOrigem = bancoService.prepararParaSaque(bancoOrigemNome, conn, agenciaOrigem, contaNumOrigem,
                     valor);
             Conta contaDestino = bancoService.prepararParaDeposito(bancoDestinoNome, conn, agenciaDestino,
-                    agenciaDestino);
+                    contaNumDestino);
 
             // Simulação de confirmação de preparação
             System.out.println("Fase 1: Preparado para commit");
@@ -54,6 +54,7 @@ public class BankManager {
 
                 } catch (Exception e) {
                     System.out.println("Fase 2: Commit falhou, realizando rollback");
+                    e.printStackTrace();
                     conn.rollback(); // Rollback em caso de falha no commit
                     return false; // Falha no commit
                 }
@@ -87,9 +88,11 @@ public class BankManager {
     public void sacar(String bancoNome, String agencia, String contaNum, double valor) throws SQLException {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Conta conta = bancoService.prepararParaSaque(bancoNome, conn, agencia, contaNum, valor);
-            conta.setSaldo(conta.getSaldo() - valor); // Subtrai o valor do saldo
+
+            conta.setSaldo(conta.getSaldo() - valor);
             contaService.atualizarSaldo(conn, conta); // Atualiza a conta no banco
             System.out.println("Saque realizado com sucesso.");
+            conn.close();
         }
     }
 
@@ -116,7 +119,6 @@ public class BankManager {
             Banco banco = bancoService.buscarBanco(bancoNome); // Verifica se o banco existe
             contaService.criarConta(conn, new Conta(contaNum, agencia, saldo, banco)); // Cria a conta
             System.out.println("Conta criada com sucesso.");
-
             conn.close();
         }
         return true;

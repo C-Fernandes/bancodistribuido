@@ -42,6 +42,7 @@ public class BancoService {
 
         // Se a conta de destino foi encontrada, continue com o fluxo
         System.out.println("Conta de destino verificada e pronta para o depósito.");
+        conta.setBanco(buscarBanco(bancoNome));
         return conta; // Retorna a conta, pronta para o depósito
     }
 
@@ -51,7 +52,6 @@ public class BancoService {
         buscarBanco(bancoNome);
 
         Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum); // Buscar e bloquear a
-                                                                                             // conta
 
         if (conta == null) {
             conn.rollback();
@@ -66,6 +66,7 @@ public class BancoService {
 
         // Se a conta existe e o saldo é suficiente, continue com o fluxo
         System.out.println("Conta de origem verificada e saldo suficiente.");
+        conta.setBanco(buscarBanco(bancoNome));
         return conta; // Retorna a conta, pronta para o saque
     }
 

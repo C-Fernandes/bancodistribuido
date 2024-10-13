@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ApiGateway {
@@ -12,7 +13,6 @@ public class ApiGateway {
     private static final Set<Integer> activeServers = ConcurrentHashMap.newKeySet(); // Concorrência melhorada
     private static final AtomicInteger serverIndex = new AtomicInteger(0);
     private static final int TIMEOUT = 10000; // Aumentado o timeout para 20 segundos
-
 
     public void start() {
         System.out.println("Gateway escutando TCP e UDP na porta " + GATEWAY_PORT);
@@ -124,7 +124,8 @@ public class ApiGateway {
                     handleHttpRequest(request);
                 } else {
                     System.out.println("Requisição TCP detectada.");
-                    handleTcpRequest();
+                    processServerRequest(request); // Passa a mensagem recebida para processServerRequest
+
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -143,7 +144,7 @@ public class ApiGateway {
         }
 
         private void handleTcpRequest() throws IOException {
-            processServerRequest("Requisição TCP recebida");
+            processServerRequest(null);
         }
 
         private void processServerRequest(String request) throws IOException {
@@ -152,8 +153,7 @@ public class ApiGateway {
             Callable<String> task = () -> {
                 try (Socket serverSocket = new Socket()) {
                     serverSocket.connect(new InetSocketAddress("localhost", getAvailableServerPort()), 5000); // Timeout
-                                                                                                              // de
-                                                                                                              // conexão
+                    // conexão
                     serverSocket.setSoTimeout(TIMEOUT); // Timeout para leitura
 
                     PrintWriter outToServer = new PrintWriter(serverSocket.getOutputStream(), true);
