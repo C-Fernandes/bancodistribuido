@@ -62,12 +62,17 @@ public class Conta {
 
     @Override
     public String toString() {
-        return "{" +
-                " conta='" + getConta() + "'" +
-                ", agencia='" + getAgencia() + "'" +
-                ", saldo='" + getSaldo() + "'" +
-                ", banco='" + getBanco() + "'" +
-                "}";
+        return String.format(
+                "Conta{" +
+                        "    Banco: %s ," +
+                        "    Agência: %s ," +
+                        "    Conta: %s ," +
+                        "    Saldo: %.2f " +
+                        "}",
+                getBanco(), // ou getBanco().getNome() se Banco for um objeto
+                getAgencia(),
+                getConta(),
+                getSaldo());
     }
 
 }

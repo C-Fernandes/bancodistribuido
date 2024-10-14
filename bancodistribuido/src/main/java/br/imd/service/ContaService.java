@@ -5,14 +5,16 @@ import java.sql.SQLException;
 import java.util.List;
 
 import br.imd.entity.Conta;
+import br.imd.repository.BancoRepository;
 import br.imd.repository.ContaRepository;
 
 public class ContaService {
     private ContaRepository contaRepository;
-    private BancoService bancoService;
+    private BancoRepository bancoRepository;
 
     public ContaService() {
         this.contaRepository = new ContaRepository();
+        this.bancoRepository = new BancoRepository();
     }
 
     // Método para criar uma nova conta
@@ -42,7 +44,7 @@ public class ContaService {
 
             // Se a conta não existe, cria a nova conta
             Conta novaConta = new Conta();
-            novaConta.setBanco(bancoService.buscarBanco(banco));
+            novaConta.setBanco(bancoRepository.buscarBanco(banco));
             novaConta.setAgencia(agencia);
             novaConta.setConta(contaNum);
             novaConta.setSaldo(0.0); // Saldo inicial padrão
@@ -54,7 +56,7 @@ public class ContaService {
             return true; // Retorna true se a operação foi bem-sucedida
         } catch (Exception e) {
             conn.rollback(); // Faz o rollback em caso de erro
-            e.printStackTrace();
+            e.getMessage();
             return false; // Retorna false se houve algum erro
         }
     }
@@ -71,7 +73,7 @@ public class ContaService {
 
             // Se a conta não existe, cria a nova conta com saldo inicial
             Conta novaConta = new Conta();
-            novaConta.setBanco(bancoService.buscarBanco(banco));
+            novaConta.setBanco(bancoRepository.buscarBanco(banco));
             novaConta.setAgencia(agencia);
             novaConta.setConta(contaNum);
             novaConta.setSaldo(saldoInicial); // Saldo inicial definido
@@ -84,14 +86,15 @@ public class ContaService {
             return true; // Retorna true se a operação foi bem-sucedida
         } catch (Exception e) {
             conn.rollback(); // Faz o rollback em caso de erro
-            e.printStackTrace();
+            e.getMessage();
+            conn.close();
             return false; // Retorna false se houve algum erro
         }
     }
 
     // Método para listar todas as contas
-    public List<Conta> listarContas(Connection conn) throws SQLException {
-        return contaRepository.listarContas(conn);
+    public List<Conta> listarContas() throws SQLException {
+        return contaRepository.listarContas();
     }
 
     // Método para atualizar o saldo de uma conta
@@ -110,6 +113,17 @@ public class ContaService {
     public Conta buscarContaEBloquear(Connection conn, String banco, String agencia, String numero)
             throws SQLException {
         return contaRepository.buscarContaEBloquear(conn, banco, agencia, numero);
+    }
+
+    public List<Conta> listarContasPorBanco(Connection conn, String banco) throws SQLException {
+        // Verifica se o banco existe
+        if (bancoRepository.buscarBanco(banco) == null) {
+            throw new IllegalArgumentException("Banco não encontrado: " + banco);
+        }
+
+        // Busca e retorna as contas do banco
+        List<Conta> contas = contaRepository.listarContasPorBanco(conn, banco);
+        return contas;
     }
 
 }

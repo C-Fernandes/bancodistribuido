@@ -25,9 +25,8 @@ public class UdpServer {
         this.serverPort = port; // Armazenando a porta do servidor
 
         // Iniciar o executor agendado para enviar heartbeat
-        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
-        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // Envia a porta a cada 3
-                                                                                            // segundos
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS);
 
         // Iniciar o servidor UDP
         startUdpServer();
@@ -45,7 +44,7 @@ public class UdpServer {
                 System.out.println("Mensagem recebida: " + message);
 
                 String[] parts = messageProcessor.processMessage(message);
-                String responseMessage = "-";
+                String responseMessage;
 
                 if (parts != null) {
                     String action = parts[0]; // Ação extraída da mensagem
@@ -59,7 +58,6 @@ public class UdpServer {
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
-                // System.out.println("Enviando para a porta: " + clientPort);
                 socket.send(sendPacket);
                 System.out.println("Resposta enviada: " + responseMessage);
             }

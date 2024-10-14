@@ -1,8 +1,10 @@
 package br.imd.processors;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import br.imd.entity.Banco;
+import br.imd.entity.Conta; // Certifique-se de que você tem uma classe Conta para listar
 import br.imd.service.BankManager;
 
 public class BankActionHandler {
@@ -13,8 +15,10 @@ public class BankActionHandler {
         this.bankManager = bankManager;
     }
 
+    // Método que lida com as ações recebidas e retorna a resposta ao cliente
     public String handleAction(String action, String[] parts) throws SQLException {
-        switch (action.toUpperCase()) {
+
+        switch (action.toUpperCase().trim()) {
             case "TRANSFERIR":
                 return handleTransferir(parts);
             case "SACAR":
@@ -23,13 +27,22 @@ public class BankActionHandler {
                 return handleCriarConta(parts);
             case "CRIAR_BANCO":
                 return handleCriarBanco(parts);
-            case "DEPOSITAR": // Adicionando o case para depositar
-                return handleDepositar(parts); // Chama o método para depositar
+            case "DEPOSITAR":
+                return handleDepositar(parts);
+            case "LISTAR_CONTAS":
+                return handleListarContas(parts);
+            case "LISTAR_BANCOS":
+                return handleListarBancos(parts);
+            case "EXCLUIR_CONTA":
+                return handleExcluirConta(parts);
+            case "EXCLUIR_BANCO":
+                return handleExcluirBanco(parts);
             default:
                 return "Ação não reconhecida.";
         }
     }
 
+    // Lida com a ação de transferência
     private String handleTransferir(String[] parts) {
         if (parts.length == 8) {
             String bancoOrigem = parts[1];
@@ -40,14 +53,14 @@ public class BankActionHandler {
             String contaDestino = parts[6];
             double valor = Double.parseDouble(parts[7]);
 
-            boolean success = bankManager.transferir(bancoOrigem, agenciaOrigem, contaOrigem,
+            return bankManager.transferir(bancoOrigem, agenciaOrigem, contaOrigem,
                     bancoDestino, agenciaDestino, contaDestino, valor);
-            return success ? "Transferência realizada com sucesso." : "Falha na transferência.";
         } else {
             return "Parâmetros inválidos para transferência.";
         }
     }
 
+    // Lida com a ação de saque
     private String handleSacar(String[] parts) throws SQLException {
         if (parts.length == 5) {
             String banco = parts[1];
@@ -55,13 +68,13 @@ public class BankActionHandler {
             String conta = parts[3];
             double valor = Double.parseDouble(parts[4]);
 
-            bankManager.sacar(banco, agencia, conta, valor);
-            return "Saque realizado com sucesso.";
+            return bankManager.sacar(banco, agencia, conta, valor);
         } else {
             return "Parâmetros inválidos para saque.";
         }
     }
 
+    // Lida com a criação de conta
     private String handleCriarConta(String[] parts) throws SQLException {
         if (parts.length == 5) {
             String banco = parts[1];
@@ -69,38 +82,87 @@ public class BankActionHandler {
             String numeroConta = parts[3];
             double saldoInicial = Double.parseDouble(parts[4]);
 
-            boolean success = bankManager.criarConta(banco, agencia, numeroConta, saldoInicial);
-            return success ? "Conta criada com sucesso." : "Falha na criação da conta.";
+            return bankManager.criarConta(banco, agencia, numeroConta, saldoInicial);
         } else {
             return "Parâmetros inválidos para criação de conta.";
         }
     }
 
+    // Lida com a criação de banco
     private String handleCriarBanco(String[] parts) throws SQLException {
         if (parts.length == 2) {
             String bancoNome = parts[1];
 
-            boolean success = bankManager.criarBanco(new Banco(bancoNome));
-            return success ? "Banco criado com sucesso." : "Falha na criação do banco.";
+            return bankManager.criarBanco(new Banco(bancoNome));
         } else {
             return "Parâmetros inválidos para criação de banco.";
         }
     }
 
-    // Método para lidar com a ação de depositar
+    // Lida com a ação de depósito
     private String handleDepositar(String[] parts) throws SQLException {
-        System.out.println("tamanho: " + parts.length);
-
         if (parts.length == 5) {
-            String banco = parts[0];
-            String agencia = parts[1];
-            String conta = parts[2];
-            double valor = Double.parseDouble(parts[3]);
+            String banco = parts[1];
+            String agencia = parts[2];
+            String conta = parts[3];
+            double valor = Double.parseDouble(parts[4]);
 
-            bankManager.depositar(banco, agencia, conta, valor); // Chama o método de depósito
-            return "Depósito realizado com sucesso.";
+            return bankManager.depositar(banco, agencia, conta, valor);
         } else {
             return "Parâmetros inválidos para depósito.";
+        }
+    }
+
+    // Lida com a ação de listar contas
+    private String handleListarContas(String[] parts) throws SQLException {
+        List<Conta> contas;
+
+        if (parts.length == 2) { // Quando o nome do banco é fornecido
+            String banco = parts[1];
+            contas = bankManager.listarContas(banco);
+        } else { // Quando nenhum parâmetro é fornecido
+            contas = bankManager.listarContas(); // Este método deve retornar todas as contas
+        }
+
+        StringBuilder resposta = new StringBuilder("Contas: ");
+        for (Conta conta : contas) {
+            resposta.append(conta.toString()).append(", "); // Assegure-se de que a classe Conta tenha um método
+                                                            // toString
+        }
+        return resposta + " OK";
+    }
+
+    // Lida com a ação de listar bancos
+    private String handleListarBancos(String[] parts) throws SQLException {
+        List<Banco> bancos = bankManager.listarBancos();
+        StringBuilder resposta = new StringBuilder("Bancos: ");
+        for (Banco banco : bancos) {
+            resposta.append(banco.getNome()).append(", "); // Assegure-se de que a classe Banco tenha o método getNome
+        }
+        return resposta + "OK";
+    }
+
+    // Lida com a ação de excluir conta
+    private String handleExcluirConta(String[] parts) throws SQLException {
+        if (parts.length == 4) {
+            String banco = parts[1];
+            String agencia = parts[2];
+            String conta = parts[3];
+
+            return bankManager.excluirConta(banco, agencia, conta);
+        } else {
+            return "Parâmetros inválidos para excluir conta.";
+        }
+    }
+
+    // Lida com a ação de excluir banco
+    private String handleExcluirBanco(String[] parts) throws SQLException {
+        if (parts.length == 2) {
+            String bancoNome = parts[1];
+
+            return bankManager.excluirBanco(bancoNome);
+        } else {
+            return "Parâmetros inválidos para excluir banco.";
         }
     }
 }

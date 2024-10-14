@@ -18,4 +18,11 @@ public class Banco { // Identificador único do banco
         this.nome = nome;
     }
 
+    @Override
+    public String toString() {
+        return String.format(
+                "Nome: %s",
+                getNome());
+    }
+
 }

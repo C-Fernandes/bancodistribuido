@@ -2,6 +2,8 @@ package br.imd.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import br.imd.entity.Banco;
 import br.imd.entity.Conta;
@@ -19,12 +21,10 @@ public class BankManager {
         this.dataBaseConnection = new DataBaseConnection();
     }
 
-    public boolean transferir(String bancoOrigemNome, String agenciaOrigem, String contaNumOrigem,
+    // Método para realizar uma transferência
+    public String transferir(String bancoOrigemNome, String agenciaOrigem, String contaNumOrigem,
             String bancoDestinoNome, String agenciaDestino, String contaNumDestino, double valor) {
-        Connection conn = null;
-
-        try {
-            conn = dataBaseConnection.getConnection();
+        try (Connection conn = dataBaseConnection.getConnection()) {
             conn.setAutoCommit(false); // Desativa o auto-commit para iniciar a transação
 
             Conta contaOrigem = bancoService.prepararParaSaque(bancoOrigemNome, conn, agenciaOrigem, contaNumOrigem,
@@ -32,112 +32,157 @@ public class BankManager {
             Conta contaDestino = bancoService.prepararParaDeposito(bancoDestinoNome, conn, agenciaDestino,
                     contaNumDestino);
 
-            // Simulação de confirmação de preparação
-            System.out.println("Fase 1: Preparado para commit");
-
             if (contaOrigem != null && contaDestino != null) {
-                // 2. Fase de commit (COMMIT)
-                try {
-                    // Remover saldo da conta de origem
-                    contaOrigem.setSaldo(contaOrigem.getSaldo() - valor);
-                    contaService.atualizarSaldo(conn, contaOrigem);
+                contaOrigem.setSaldo(contaOrigem.getSaldo() - valor);
+                contaService.atualizarSaldo(conn, contaOrigem);
 
-                    // Adicionar saldo à conta de destino
-                    contaDestino.setSaldo(contaDestino.getSaldo() + valor);
-                    contaService.atualizarSaldo(conn, contaDestino);
+                contaDestino.setSaldo(contaDestino.getSaldo() + valor);
+                contaService.atualizarSaldo(conn, contaDestino);
 
-                    // Se tudo ocorrer bem, faz o commit
-                    conn.commit();
-                    System.out.println("Fase 2: Commit realizado com sucesso");
-                    return true; // Commit bem-sucedido
-
-                } catch (Exception e) {
-                    System.out.println("Fase 2: Commit falhou, realizando rollback");
-                    e.printStackTrace();
-                    conn.rollback(); // Rollback em caso de falha no commit
-                    return false; // Falha no commit
-                }
+                conn.commit();
+                return "Transferência realizada com sucesso! OK";
             }
-            return true;
+            return "Conta de origem ou destino inválida.";
+        } catch (SQLException e) {
+            return "Erro na transferência: " + e.getMessage();
         } catch (Exception e) {
-            e.printStackTrace();
-            return false; // Exceção geral
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
+            return "Erro inesperado na transferência: " + e.getMessage();
         }
-    }// Método para realizar um depósito
+    }
 
-    public void depositar(String bancoNome, String agencia, String contaNum, double valor) throws SQLException {
+    // Método para realizar um depósito
+    public String depositar(String bancoNome, String agencia, String contaNum, double valor) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Conta conta = bancoService.prepararParaDeposito(bancoNome, conn, agencia, contaNum);
-            conta.setSaldo(conta.getSaldo() + valor); // Adiciona o valor ao saldo
-            contaService.atualizarSaldo(conn, conta); // Atualiza a conta no banco
-            System.out.println("Depósito realizado com sucesso.");
+            if (conta != null) {
+                conta.setSaldo(conta.getSaldo() + valor);
+                contaService.atualizarSaldo(conn, conta);
+                return "Depósito realizado com sucesso! OK";
+            }
+            return "Conta não encontrada para depósito.";
+        } catch (SQLException e) {
+            return "Erro no depósito: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado no depósito: " + e.getMessage();
         }
     }
 
     // Método para realizar um saque
-    public void sacar(String bancoNome, String agencia, String contaNum, double valor) throws SQLException {
+    public String sacar(String bancoNome, String agencia, String contaNum, double valor) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Conta conta = bancoService.prepararParaSaque(bancoNome, conn, agencia, contaNum, valor);
-
-            conta.setSaldo(conta.getSaldo() - valor);
-            contaService.atualizarSaldo(conn, conta); // Atualiza a conta no banco
-            System.out.println("Saque realizado com sucesso.");
-            conn.close();
+            if (conta != null) {
+                conta.setSaldo(conta.getSaldo() - valor);
+                contaService.atualizarSaldo(conn, conta);
+                return "Saque realizado com sucesso! OK";
+            }
+            return "Conta não encontrada para saque.";
+        } catch (SQLException e) {
+            return "Erro no saque: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado no saque: " + e.getMessage();
         }
     }
 
     // Método para criar um novo banco
-    public boolean criarBanco(Banco banco) throws SQLException {
-
-        bancoService.criarBanco(banco); // Cria o banco
-        System.out.println("Banco criado com sucesso.");
-
-        return true;
+    public String criarBanco(Banco banco) {
+        try {
+            bancoService.criarBanco(banco);
+            return "Banco criado com sucesso! OK";
+        } catch (SQLException e) {
+            return "Erro ao criar banco: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado ao criar banco: " + e.getMessage();
+        }
     }
 
     // Método para criar uma nova conta
-    public void criarConta(String bancoNome, Conta conta) throws SQLException {
+    public String criarConta(String bancoNome, Conta conta) {
         try (Connection conn = dataBaseConnection.getConnection()) {
-            bancoService.buscarBanco(bancoNome); // Verifica se o banco existe
-            contaService.criarConta(conn, conta); // Cria a conta
-            System.out.println("Conta criada com sucesso.");
+            Banco banco = bancoService.buscarBanco(bancoNome);
+            if (banco != null) {
+                contaService.criarConta(conn, conta);
+                return "Conta criada com sucesso! OK";
+            }
+            return "Banco não encontrado para criação da conta.";
+        } catch (SQLException e) {
+            return "Erro ao criar conta: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado ao criar conta: " + e.getMessage();
         }
     }
 
-    public boolean criarConta(String bancoNome, String agencia, String contaNum, double saldo) throws SQLException {
+    // Sobrecarga do método para criar uma conta com atributos simples
+    public String criarConta(String bancoNome, String agencia, String contaNum, double saldo) {
         try (Connection conn = dataBaseConnection.getConnection()) {
-            Banco banco = bancoService.buscarBanco(bancoNome); // Verifica se o banco existe
-            contaService.criarConta(conn, new Conta(contaNum, agencia, saldo, banco)); // Cria a conta
-            System.out.println("Conta criada com sucesso.");
-            conn.close();
+            Banco banco = bancoService.buscarBanco(bancoNome);
+            if (banco != null) {
+                contaService.criarConta(conn, new Conta(contaNum, agencia, saldo, banco));
+                return "Conta criada com sucesso! OK";
+            }
+            return "Banco não encontrado para criação da conta.";
+        } catch (SQLException e) {
+            return "Erro ao criar conta: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado ao criar conta: " + e.getMessage();
         }
-        return true;
     }
 
     // Método para excluir um banco
-    public boolean excluirBanco(String bancoNome) throws SQLException {
+    public String excluirBanco(String bancoNome) {
         try (Connection conn = dataBaseConnection.getConnection()) {
-            bancoService.excluirBanco(bancoNome); // Exclui o banco
-            System.out.println("Banco excluído com sucesso.");
+            bancoService.excluirBanco(bancoNome);
+            return "Banco excluído com sucesso! OK";
+        } catch (SQLException e) {
+            return "Erro ao excluir banco: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado ao excluir banco: " + e.getMessage();
         }
-        return true;
     }
 
     // Método para excluir uma conta
-    public void excluirConta(String bancoNome, String agencia, String contaNum) throws SQLException {
+    public String excluirConta(String bancoNome, String agencia, String contaNum) {
         try (Connection conn = dataBaseConnection.getConnection()) {
-            contaService.excluirConta(conn, bancoNome, agencia, contaNum); // Exclui a conta
-            System.out.println("Conta excluída com sucesso.");
+            contaService.excluirConta(conn, bancoNome, agencia, contaNum);
+            return "Conta excluída com sucesso! OK";
+        } catch (SQLException e) {
+            return "Erro ao excluir conta: " + e.getMessage();
+        } catch (Exception e) {
+            return "Erro inesperado ao excluir conta: " + e.getMessage();
         }
     }
 
+    public List<Banco> listarBancos() {
+        try (Connection conn = dataBaseConnection.getConnection()) {
+            return bancoService.listarBancos(conn);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erro ao listar bancos: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException("Erro inesperado ao listar bancos: " + e.getMessage());
+        }
+    }
+
+    public List<Conta> listarContas() {
+        try {
+            return contaService.listarContas();
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar contas: " + e.getMessage());
+            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+        } catch (Exception e) {
+            System.err.println("Erro inesperado ao listar contas: " + e.getMessage());
+            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+        }
+    }
+
+    public List<Conta> listarContas(String banco) {
+        try (Connection conn = dataBaseConnection.getConnection()) {
+            return contaService.listarContasPorBanco(conn, banco);
+        } catch (SQLException e) {
+            System.err.println("Erro ao listar contas do banco " + banco + ": " + e.getMessage());
+            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+        } catch (Exception e) {
+            System.err.println("Erro inesperado ao listar contas do banco " + banco + ": " + e.getMessage());
+            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+        }
+    }
 }

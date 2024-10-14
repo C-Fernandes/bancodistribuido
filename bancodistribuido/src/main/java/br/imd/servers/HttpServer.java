@@ -24,6 +24,7 @@ public class HTTPServer {
 
     public HTTPServer(int port) throws IOException {
         this.bankManager = new BankManager();
+        this.serverPort = port; // Armazenar a porta do servidor
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 40);
@@ -37,7 +38,6 @@ public class HTTPServer {
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // Envia a porta a cada 3
                                                                                             // segundos
     }
-    //
 
     private void sendHeartbeat() {
         String heartbeatMessage = Integer.toString(serverPort); // Enviando a porta em vez de "ping"
@@ -67,7 +67,9 @@ public class HTTPServer {
         public void handle(HttpExchange exchange) throws IOException {
             String responseMessage = "";
             String method = exchange.getRequestMethod();
-            if ("POST".equalsIgnoreCase(method)) {
+
+            if ("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
+
                 // Lê a solicitação
                 String recv = new String(exchange.getRequestBody().readAllBytes());
                 System.out.println("Requisição recebida: " + recv);
@@ -79,12 +81,6 @@ public class HTTPServer {
                 } catch (SQLException e) {
                     responseMessage = "Erro no banco de dados: " + e.getMessage();
                 }
-
-                // Responde ao cliente
-                exchange.sendResponseHeaders(200, responseMessage.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(responseMessage.getBytes());
-                os.close();
             } else {
                 // Método HTTP não suportado
                 responseMessage = "Método HTTP não suportado.";
@@ -92,7 +88,29 @@ public class HTTPServer {
                 OutputStream os = exchange.getResponseBody();
                 os.write(responseMessage.getBytes());
                 os.close();
+                return; // Retorna para não executar o restante do código
             }
+
+            // Responde ao cliente
+            exchange.sendResponseHeaders(200, responseMessage.getBytes().length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(responseMessage.getBytes());
+            os.close();
+        }
+
+        private String handleGetRequest(HttpExchange exchange) {
+            // Lógica para lidar com a requisição GET
+            // Aqui, você pode recuperar dados do BankManager ou processar de outra forma
+            String query = exchange.getRequestURI().getQuery();
+            String responseMessage = "Requisição GET recebida.";
+
+            // Processamento do query, se necessário
+            if (query != null) {
+                // Por exemplo, você pode retornar informações específicas com base no query
+                responseMessage += " Query: " + query;
+            }
+
+            return responseMessage;
         }
     }
 }

@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import br.imd.processors.BankActionHandler;
+import br.imd.processors.MessageProcessor;
 import br.imd.service.BankManager;
 
 public class TcpServer {
@@ -28,7 +29,7 @@ public class TcpServer {
         this.port = port; // Armazena a porta do servidor
         ServerSocket serverSocket = new ServerSocket(port);
 
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 40);
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 60);
         service(serverSocket, executorService); // Passa o ServerSocket e ExecutorService
     }
 
@@ -71,13 +72,13 @@ public class TcpServer {
 
 class Handler implements Runnable {
     private Socket socket;
-    private BankManager bankManager; // Instância do BankManager
     private BankActionHandler actionHandler; // Instância do BankActionHandler
+    private MessageProcessor messageProcessor;
 
     public Handler(Socket socket, BankManager bankManager) {
         this.socket = socket;
-        this.bankManager = bankManager; // Recebe o BankManager
         this.actionHandler = new BankActionHandler(bankManager); // Inicializa o BankActionHandler
+        this.messageProcessor = new MessageProcessor();
     }
 
     private BufferedReader getReader(Socket socket) throws IOException {
@@ -88,34 +89,55 @@ class Handler implements Runnable {
     public void run() {
         BufferedReader br = null;
         PrintWriter out = null;
-        String responseMessage = ""; // Mensagem de resposta
+        String responseMessage = "";
 
         try {
             br = getReader(socket);
+
             String recv = br.readLine(); // Lê a linha do cliente
 
             if (recv == null) {
                 responseMessage = "Conexão fechada pelo cliente.";
-                return; // Sai do método se a conexão foi fechada
             }
 
             System.out.println("Mensagem recebida: (" + recv + ")");
-            String[] parts = recv.split(" "); // Supondo que os comandos são separados por espaço
+            String[] parts = messageProcessor.processMessage(recv);
+            if (parts.length == 0) {
+                responseMessage = "Comando inválido.";
 
-            // Chama o BankActionHandler para processar a ação
-            responseMessage = actionHandler.handleAction(parts[0], parts); // O primeiro elemento é a ação
+            }
 
+            if (responseMessage.equals("")) {
+                responseMessage = actionHandler.handleAction(parts[0], parts);
+            }
             // Envia a resposta de volta ao cliente
-            System.out.println("Enviando resposta: " + responseMessage);
+            System.out.println("mensagem enviada:" + responseMessage);
             out = new PrintWriter(socket.getOutputStream(), true); // Flush automático
             out.println(responseMessage); // Usando println para adicionar a quebra de linha
 
         } catch (IOException e) {
+            // Trate erros de I/O e notifique o cliente
             e.printStackTrace();
+            responseMessage = "Erro de I/O: " + e.getMessage();
+            if (out != null) {
+                out.println(responseMessage); // Envia o erro ao cliente antes de fechar a conexão
+            }
         } catch (SQLException e) {
-            // TODO Auto-generated catch block
+            // Trate erros de SQL e notifique o cliente
             e.printStackTrace();
+            responseMessage = "Erro de SQL: " + e.getMessage();
+            if (out != null) {
+                out.println(responseMessage); // Envia o erro ao cliente antes de fechar a conexão
+            }
+        } catch (Exception e) {
+            // Trate qualquer outro tipo de exceção e notifique o cliente
+            e.printStackTrace();
+            responseMessage = "Erro inesperado: " + e.getMessage();
+            if (out != null) {
+                out.println(responseMessage); // Envia o erro ao cliente antes de fechar a conexão
+            }
         } finally {
+            // Fechamento seguro dos recursos
             try {
                 if (br != null) {
                     br.close();
@@ -123,7 +145,7 @@ class Handler implements Runnable {
                 if (out != null) {
                     out.close();
                 }
-                if (socket != null) {
+                if (socket != null && !socket.isClosed()) {
                     socket.close();
                 }
             } catch (IOException e) {

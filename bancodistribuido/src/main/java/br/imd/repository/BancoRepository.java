@@ -78,4 +78,23 @@ public class BancoRepository {
             e.getMessage();
         }
     }
+
+    // Método para listar todos os bancos
+    public List<Banco> listarBancos(Connection conn) throws SQLException {
+        String sql = "SELECT * FROM banco";
+        List<Banco> bancos = new ArrayList<>();
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+                ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                Banco banco = new Banco(rs.getString("nome")); // Supondo que a coluna se chama 'nome'
+                bancos.add(banco);
+            }
+        } catch (SQLException e) {
+            throw new SQLException("Erro ao listar bancos: " + e.getMessage(), e);
+        }
+
+        return bancos;
+    }
 }

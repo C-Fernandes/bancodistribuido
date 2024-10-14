@@ -2,6 +2,7 @@ package br.imd.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 
 import br.imd.entity.Banco;
 import br.imd.entity.Conta;
@@ -30,7 +31,6 @@ public class BancoService {
     // Função para preparar a conta de destino para o depósito
     public Conta prepararParaDeposito(String bancoNome, Connection conn, String agencia, String contaNum)
             throws SQLException {
-        buscarBanco(bancoNome);
 
         Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum); // Buscar e bloquear a
                                                                                              // conta
@@ -42,6 +42,7 @@ public class BancoService {
 
         // Se a conta de destino foi encontrada, continue com o fluxo
         System.out.println("Conta de destino verificada e pronta para o depósito.");
+
         conta.setBanco(buscarBanco(bancoNome));
         return conta; // Retorna a conta, pronta para o depósito
     }
@@ -103,5 +104,11 @@ public class BancoService {
             System.out.println("Erro ao excluir o banco: " + e.getMessage());
             return false; // Indica falha
         }
+    }
+
+    // Método para listar todos os bancos
+    public List<Banco> listarBancos(Connection conn) throws SQLException {
+        // Chama o repositório para listar os bancos
+        return bancoRepository.listarBancos(conn);
     }
 }
