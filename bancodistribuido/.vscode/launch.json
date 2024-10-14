@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "HTTPServer",
+            "request": "launch",
+            "mainClass": "br.imd.servers.HTTPServer",
+            "projectName": "bancodistribuido"
+        },
+        {
+            "type": "java",
             "name": "Current File",
             "request": "launch",
             "mainClass": "${file}"
@@ -22,7 +29,7 @@
             "name": "TcpServer",
             "request": "launch",
             "mainClass": "br.imd.servers.TcpServer",
-            "projectName": "bancodistribuido",
+            "projectName": "bancodistribuido"
         },
         {
             "type": "java",

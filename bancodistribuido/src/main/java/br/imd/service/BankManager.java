@@ -1,12 +1,11 @@
-package br.imd.repository;
+package br.imd.service;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 import br.imd.entity.Banco;
 import br.imd.entity.Conta;
-import br.imd.service.BancoService;
-import br.imd.service.ContaService;
+import br.imd.repository.DataBaseConnection;
 
 public class BankManager {
 

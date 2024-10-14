@@ -50,9 +50,8 @@ public class BancoService {
     public Conta prepararParaSaque(String bancoNome, Connection conn, String agencia, String contaNum, double valor)
             throws SQLException {
         buscarBanco(bancoNome);
-
         Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum); // Buscar e bloquear a
-
+        conn.setAutoCommit(false);
         if (conta == null) {
             conn.rollback();
             throw new IllegalArgumentException("Conta de origem não encontrada no banco informado.");

@@ -1,31 +1,53 @@
 package br.imd.servers;
 
-import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import br.imd.entity.Banco;
-import br.imd.processors.MessageProcessor;
-import br.imd.repository.BankManager;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
+import br.imd.processors.BankActionHandler;
+import br.imd.service.BankManager;
 
 public class HTTPServer {
     private BankManager bankManager;
+    private ScheduledExecutorService heartbeatExecutor;
+    private int serverPort; // Armazenar a porta do servidor
 
     public HTTPServer(int port) throws IOException {
         this.bankManager = new BankManager();
+
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 40);
-        server.createContext("/bank", new BankHandler(bankManager));
+        server.createContext("/", new BankHandler(bankManager));
         server.setExecutor(executorService); // Utiliza um pool de threads
         server.start();
         System.out.println("Servidor HTTP iniciado na porta " + port);
+
+        // Configuração do heartbeat
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // Envia a porta a cada 3
+                                                                                            // segundos
+    }
+    //
+
+    private void sendHeartbeat() {
+        String heartbeatMessage = Integer.toString(serverPort); // Enviando a porta em vez de "ping"
+        try (Socket socket = new Socket("localhost", 8000)) { // Porta do servidor que receberá a mensagem
+            OutputStream os = socket.getOutputStream();
+            os.write(heartbeatMessage.getBytes());
+            os.flush();
+        } catch (IOException e) {
+            System.out.println("Falha ao enviar mensagem: " + e.getMessage());
+        }
     }
 
     public static void main(String[] args) throws IOException {
@@ -34,9 +56,11 @@ public class HTTPServer {
 
     static class BankHandler implements HttpHandler {
         private BankManager bankManager;
+        private BankActionHandler bankActionHandler; // Adicionando a classe BankActionHandler
 
         public BankHandler(BankManager bankManager) {
             this.bankManager = bankManager;
+            this.bankActionHandler = new BankActionHandler(bankManager); // Inicializando BankActionHandler
         }
 
         @Override
@@ -48,55 +72,10 @@ public class HTTPServer {
                 String recv = new String(exchange.getRequestBody().readAllBytes());
                 System.out.println("Requisição recebida: " + recv);
 
-                // Processa a mensagem como no servidor TCP
-                MessageProcessor messageProcessor = new MessageProcessor();
-                String[] parts = messageProcessor.processMessage(recv);
-
-                // Lógica de processamento (igual ao exemplo TCP)
+                // Aqui você pode usar o BankActionHandler diretamente
+                String[] parts = recv.split("-"); // Ajuste conforme necessário para separar os comandos
                 try {
-                    if (parts[0].equalsIgnoreCase("TRANSFERIR") && parts.length == 8) {
-                        String bancoOrigemNome = parts[1];
-                        String agenciaOrigem = parts[2];
-                        String contaNumOrigem = parts[3];
-                        String bancoDestinoNome = parts[4];
-                        String agenciaDestino = parts[5];
-                        String contaNumDestino = parts[6];
-                        double valor = Double.parseDouble(parts[7]);
-
-                        boolean success = bankManager.transferir(bancoOrigemNome, agenciaOrigem, contaNumOrigem,
-                                bancoDestinoNome, agenciaDestino, contaNumDestino, valor);
-                        responseMessage = success ? "Transferência realizada com sucesso." : "Falha na transferência.";
-                    } else if (parts[0].equalsIgnoreCase("SACAR") && parts.length == 5) {
-                        String bancoNome = parts[1];
-                        String agencia = parts[2];
-                        String contaNum = parts[3];
-                        double valor = Double.parseDouble(parts[4]);
-
-                        bankManager.sacar(bancoNome, agencia, contaNum, valor);
-                        responseMessage = "Saque realizado com sucesso.";
-                    } else if (parts[0].equalsIgnoreCase("CRIAR_BANCO")) {
-                        if (parts.length == 2) {
-                            String bancoNome = parts[1];
-                            boolean success = bankManager.criarBanco(new Banco(bancoNome));
-                            responseMessage = success ? "Banco criado com sucesso." : "Falha na criação do banco.";
-                        } else {
-                            responseMessage = "Parâmetros inválidos para criação de banco.";
-                        }
-                    } else if (parts[0].equalsIgnoreCase("CRIAR_CONTA")) {
-                        if (parts.length == 5) {
-                            String bancoNome = parts[1];
-                            String agencia = parts[2];
-                            String contaNum = parts[3];
-                            double valor = Double.parseDouble(parts[4]);
-
-                            bankManager.criarConta(bancoNome, agencia, contaNum, valor);
-                            responseMessage = "Conta criada com sucesso.";
-                        } else {
-                            responseMessage = "Parâmetros inválidos para criação de conta.";
-                        }
-                    } else {
-                        responseMessage = "Comando inválido.";
-                    }
+                    responseMessage = bankActionHandler.handleAction(parts[0], parts); // Chame o método handleAction
                 } catch (SQLException e) {
                     responseMessage = "Erro no banco de dados: " + e.getMessage();
                 }

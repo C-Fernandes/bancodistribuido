@@ -167,7 +167,7 @@ public class ContaRepository {
         // SQL para buscar a conta considerando banco, agência e conta, e bloqueando a
         // linha para atualização
         String sql = "SELECT * FROM Conta WHERE banco = ? AND agencia = ? AND conta = ? FOR UPDATE";
-
+        System.out.println("buscar e bloquear");
         System.out.println(bancoNome);
         System.out.println(agencia);
         System.out.println(conta);
