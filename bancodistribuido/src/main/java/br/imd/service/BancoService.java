@@ -28,30 +28,26 @@ public class BancoService {
         return banco;
     }
 
-    // Função para preparar a conta de destino para o depósito
     public Conta prepararParaDeposito(String bancoNome, Connection conn, String agencia, String contaNum)
             throws SQLException {
 
-        Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum); // Buscar e bloquear a
-                                                                                             // conta
+        Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum);
 
         if (conta == null) {
             conn.rollback();
             throw new IllegalArgumentException("Conta de destino não encontrada no banco informado.");
         }
 
-        // Se a conta de destino foi encontrada, continue com o fluxo
         System.out.println("Conta de destino verificada e pronta para o depósito.");
 
         conta.setBanco(buscarBanco(bancoNome));
-        return conta; // Retorna a conta, pronta para o depósito
+        return conta;
     }
 
-    // Função para preparar a conta de origem para o saque
     public Conta prepararParaSaque(String bancoNome, Connection conn, String agencia, String contaNum, double valor)
             throws SQLException {
         buscarBanco(bancoNome);
-        Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum); // Buscar e bloquear a
+        Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum);
         conn.setAutoCommit(false);
         if (conta == null) {
             conn.rollback();
@@ -59,58 +55,50 @@ public class BancoService {
         }
         System.out.println("Saldo: " + conta.getSaldo());
         System.out.println("Valor: " + valor);
-        // Verificar se a conta tem saldo suficiente
         if (conta.getSaldo() < valor) {
-
             conn.rollback();
+            conta = null;
             throw new IllegalArgumentException("Saldo insuficiente na conta.");
+
         }
 
-        // Se a conta existe e o saldo é suficiente, continue com o fluxo
         System.out.println("Conta de origem verificada e saldo suficiente.");
         conta.setBanco(buscarBanco(bancoNome));
-        return conta; // Retorna a conta, pronta para o saque
+        return conta;
     }
 
-    // Função para criar um novo banco
     public void criarBanco(Banco banco) throws SQLException {
         try {
-            // Verifica se o banco já existe
             Banco bancoExistente = bancoRepository.buscarBanco(banco.getNome());
             if (bancoExistente != null) {
                 throw new IllegalArgumentException("Banco já existe com o nome: " + banco.getNome());
             }
 
-            // Cria o novo banco
             bancoRepository.criarBanco(banco);
 
             System.out.println("Banco criado com sucesso: " + banco.getNome());
         } catch (Exception e) {
             throw new IllegalArgumentException("Erro geral: " + e.getMessage(), e);
         }
-    } // Função para excluir um banco pelo nome
+    }
 
     public boolean excluirBanco(String bancoNome) {
         try {
-            // Verifica se o banco existe
             Banco bancoExistente = bancoRepository.buscarBanco(bancoNome);
             if (bancoExistente == null) {
                 throw new IllegalArgumentException("Banco não encontrado: " + bancoNome);
             }
 
-            // Exclui o banco
             bancoRepository.excluirBanco(bancoNome);
             System.out.println("Banco excluído com sucesso: " + bancoNome);
-            return true; // Indica sucesso
+            return true;
         } catch (Exception e) {
             System.out.println("Erro ao excluir o banco: " + e.getMessage());
-            return false; // Indica falha
+            return false;
         }
     }
 
-    // Método para listar todos os bancos
     public List<Banco> listarBancos(Connection conn) throws SQLException {
-        // Chama o repositório para listar os bancos
         return bancoRepository.listarBancos(conn);
     }
 }

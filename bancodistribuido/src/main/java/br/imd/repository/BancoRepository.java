@@ -16,7 +16,6 @@ public class BancoRepository {
         this.databaseConnection = new DataBaseConnection();
     }
 
-    // Método para criar um novo banco
     public void criarBanco(Banco banco) {
         String sql = "INSERT INTO banco (nome) VALUES (?)";
 
@@ -29,7 +28,6 @@ public class BancoRepository {
         }
     }
 
-    // Método para buscar um banco pelo nome
     public Banco buscarBanco(String nome) {
         String sql = "SELECT * FROM banco WHERE nome = ?";
         Banco banco = null;
@@ -46,7 +44,6 @@ public class BancoRepository {
         return banco;
     }
 
-    // Método para listar todos os bancos
     public List<Banco> listarBancos() {
         String sql = "SELECT * FROM banco";
         List<Banco> bancos = new ArrayList<>();
@@ -66,7 +63,6 @@ public class BancoRepository {
         return bancos;
     }
 
-    // Método para excluir um banco
     public void excluirBanco(String nome) {
         String sql = "DELETE FROM banco WHERE nome = ?";
 
@@ -79,7 +75,6 @@ public class BancoRepository {
         }
     }
 
-    // Método para listar todos os bancos
     public List<Banco> listarBancos(Connection conn) throws SQLException {
         String sql = "SELECT * FROM banco";
         List<Banco> bancos = new ArrayList<>();
@@ -88,7 +83,7 @@ public class BancoRepository {
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                Banco banco = new Banco(rs.getString("nome")); // Supondo que a coluna se chama 'nome'
+                Banco banco = new Banco(rs.getString("nome"));
                 bancos.add(banco);
             }
         } catch (SQLException e) {

@@ -75,9 +75,7 @@ public class HTTPServer {
         public void handle(HttpExchange exchange) throws IOException {
             String responseMessage = "";
             String path = exchange.getRequestURI().getPath();
-            System.out.println(path);
             String method = exchange.getRequestMethod();
-            System.out.println(method);
             try {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes());
 
@@ -155,16 +153,12 @@ public class HTTPServer {
 
                 if (!action.isEmpty() && responseMessage.isEmpty()) {
                     String[] parts = messageProcessor.processMessage(requestBody);
-                    System.out.println("Mensagem para ser processada: " + requestBody);
                     responseMessage = bankActionHandler.handleAction(action, parts);
-                    System.out.println("resposta banck action: " + responseMessage);
                 }
 
                 if (responseMessage.contains("OK")) {
                     exchange.sendResponseHeaders(200, responseMessage.getBytes().length);
                 } else {
-
-                    System.out.println("400");
                     exchange.sendResponseHeaders(400, responseMessage.getBytes().length);
                 }
 
@@ -173,22 +167,18 @@ public class HTTPServer {
                 }
 
             } catch (SQLException e) {
-                System.out.println("Entrou no sql exception");
                 responseMessage = "Erro no banco de dados: " + e.getMessage();
                 exchange.sendResponseHeaders(500, responseMessage.getBytes().length);
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(responseMessage.getBytes());
                 }
             } catch (NumberFormatException e) {
-                System.out.println("Number Format exception");
                 responseMessage = "Valor inválido: " + e.getMessage();
                 exchange.sendResponseHeaders(400, responseMessage.getBytes().length);
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(responseMessage.getBytes());
                 }
             } catch (Exception e) {
-
-                System.out.println("Exception exception");
                 responseMessage = "Erro inesperado: " + e.getMessage();
                 exchange.sendResponseHeaders(500, responseMessage.getBytes().length);
                 try (OutputStream os = exchange.getResponseBody()) {

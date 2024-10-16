@@ -36,9 +36,9 @@ public class ApiGateway {
     private static final int GATEWAY_PORT_UDP = 8999;
     private static final int GATEWAY_PORT_TCP = 8998;
     private static final int GATEWAY_PORT_HTTP = 8997;
-    private static final Set<Integer> activeServers = ConcurrentHashMap.newKeySet(); // Concorrência melhorada
+    private static final Set<Integer> activeServers = ConcurrentHashMap.newKeySet();
     private static final AtomicInteger serverIndex = new AtomicInteger(0);
-    private static final int TIMEOUT = 10000; // Timeout de 10 segundos
+    private static final int TIMEOUT = 10000;
     private PortManager portManager;
 
     public ApiGateway() {
@@ -47,18 +47,14 @@ public class ApiGateway {
 
     public void start() {
 
-        // Inicia a verificação de heartbeat dos servidores
         new Thread(new Heartbeat(activeServers)).start();
 
-        // Usando um pool de threads fixo para controlar o número de requisições
         ExecutorService executor = new ThreadPoolExecutor(
-                100, // core pool size
-                300, // maximum pool size
-                60L, TimeUnit.SECONDS, // keep-alive time
-                new LinkedBlockingQueue<Runnable>(1000), // work queue com capacidade
-                new ThreadPoolExecutor.AbortPolicy() // AbortPolicy para rejeitar requisições quando o pool estiver
-                                                     // cheio
-        );
+                100,
+                300,
+                60L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(1000),
+                new ThreadPoolExecutor.AbortPolicy());
 
         new Thread(() -> startTcpServer(executor)).start();
         new Thread(() -> startUdpServer(executor)).start();
@@ -104,7 +100,7 @@ public class ApiGateway {
                 executor.submit(() -> processUdpRequest(receivePacket, udpSocket));
             }
         } catch (IOException e) {
-            e.printStackTrace(); // Imprimir o stack trace da exceção
+            e.printStackTrace();
         }
     }
 
@@ -117,22 +113,21 @@ public class ApiGateway {
 
             }
         } catch (IOException e) {
-            e.printStackTrace(); // Imprimir o stack trace da exceção
+            e.printStackTrace();
         }
     }
 
     private void handleHttpRequest(HttpExchange exchange) throws IOException {
-        String requestPath = exchange.getRequestURI().getPath(); // Obtém o caminho da requisição
+        String requestPath = exchange.getRequestURI().getPath();
         InputStream requestBody = exchange.getRequestBody();
         byte[] requestData = requestBody.readAllBytes();
         int availableServerPort = getAvailableServerPort();
-        String serverUrl = "http://localhost:" + availableServerPort + requestPath; // Adiciona o caminho à URL do
+        String serverUrl = "http://localhost:" + availableServerPort + requestPath;
         HttpURLConnection conn = (HttpURLConnection) new URL(serverUrl).openConnection();
         conn.setRequestMethod(exchange.getRequestMethod());
         conn.setDoOutput(true);
 
         try {
-            // Envia o corpo da requisição se existir
             if (requestData.length > 0) {
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(requestData);
@@ -144,16 +139,12 @@ public class ApiGateway {
                     "Não foi possivel se conectar com o servidor: " + availableServerPort + ". " + e.getMessage());
         }
 
-        // Aqui você formata a URL com base no caminho da requisição
-
-        // Recebe a resposta do servidor
         int responseCode = conn.getResponseCode();
         InputStream responseStream = (responseCode == HttpURLConnection.HTTP_OK) ? conn.getInputStream()
                 : conn.getErrorStream();
         byte[] responseData = responseStream.readAllBytes();
         System.out.println("Resposta recebida do servidor: " + responseCode);
 
-        // Envia a resposta de volta ao cliente
         exchange.sendResponseHeaders(responseCode, responseData.length);
         try (OutputStream responseBody = exchange.getResponseBody()) {
             responseBody.write(responseData);
@@ -197,11 +188,11 @@ public class ApiGateway {
             udpSocket.send(clientResponsePacket);
             System.out.println("Resposta enviada ao cliente.");
         } catch (SocketTimeoutException e) {
-            System.err.println("Timeout ao esperar a resposta do servidor.");
+            // System.err.println("Timeout ao esperar a resposta do servidor.");
         } catch (IOException e) {
-            e.printStackTrace(); // Imprimir o stack trace da exceção
+            e.printStackTrace();
         } finally {
-            System.out.println("Terminando processo");
+            // System.out.println("Terminando processo");
             if (allocatedPort != -1) {
                 portManager.releasePort(allocatedPort);
             }
@@ -232,11 +223,10 @@ public class ApiGateway {
                 System.out.println("Response: " + response);
 
                 if (response != null) {
-                    outToClient.println("Resposta do servidor: " + response);
-                    // System.out.println("Resposta enviada ao cliente: " + response);
+                    outToClient.println(response);
+                    System.out.println("Resposta enviada ao cliente: " + response);
                 } else {
-
-                    // System.err.println("Resposta do servidor é null.");
+                    System.err.println("Resposta do servidor é null.");
                 }
             } catch (SocketTimeoutException e) {
                 System.err.println("Timeout ao esperar a resposta do servidor.");
@@ -262,7 +252,6 @@ public class ApiGateway {
 
             int selectedPort = activeServersList.get(currentIndex % size);
             serverIndex.set((currentIndex + 1) % size);
-            // System.out.println("porta enviada: " + selectedPort);
             return selectedPort;
         }
     }

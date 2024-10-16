@@ -69,7 +69,7 @@ public class Conta {
                         "    Conta: %s ," +
                         "    Saldo: %.2f " +
                         "}",
-                getBanco(), // ou getBanco().getNome() se Banco for um objeto
+                getBanco(),
                 getAgencia(),
                 getConta(),
                 getSaldo());

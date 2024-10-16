@@ -18,18 +18,17 @@ public class ContaRepository {
         this.bancoRepository = new BancoRepository();
     }
 
-    // Método para criar uma nova conta
     public void criarConta(Connection conn, Conta conta) throws SQLException {
         String sql = "INSERT INTO conta (banco, agencia, conta, saldo) VALUES (?, ?, ?, ?)";
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
-            closeConnection = true; // Marca para fechar a conexão depois
+            conn = dataBaseConnection.getConnection();
+            closeConnection = true;
         }
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, conta.getBanco().getNome()); // Define o nome do banco
+            pstmt.setString(1, conta.getBanco().getNome());
             pstmt.setString(2, conta.getAgencia());
             pstmt.setString(3, conta.getConta());
             pstmt.setDouble(4, conta.getSaldo());
@@ -39,7 +38,7 @@ public class ContaRepository {
         } finally {
             if (closeConnection && conn != null) {
                 try {
-                    conn.close(); // Fecha a conexão se foi criada aqui
+                    conn.close();
                 } catch (SQLException e) {
                     e.getMessage();
                 }
@@ -47,15 +46,14 @@ public class ContaRepository {
         }
     }
 
-    // Método para buscar uma conta pelo número e agência
     public Conta buscarConta(Connection conn, String banco, String agencia, String conta) throws SQLException {
         String sql = "SELECT * FROM conta WHERE banco = ? AND agencia = ? AND conta = ?";
         Conta contaResult = null;
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
-            closeConnection = true; // Marca para fechar a conexão depois
+            conn = dataBaseConnection.getConnection();
+            closeConnection = true;
         }
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, banco);
@@ -71,7 +69,7 @@ public class ContaRepository {
         } finally {
             if (closeConnection && conn != null) {
                 try {
-                    conn.close(); // Fecha a conexão se foi criada aqui
+                    conn.close();
                 } catch (SQLException e) {
                     e.getMessage();
                 }
@@ -84,13 +82,11 @@ public class ContaRepository {
         String sql = "SELECT * FROM conta";
         List<Conta> contas = new ArrayList<>();
 
-        // Criação da conexão
-        try (Connection conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
+        try (Connection conn = dataBaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
 
             while (rs.next()) {
-                // Removido o espaço em branco antes de "conta"
                 Conta conta = new Conta(
                         rs.getString("agencia"),
                         rs.getString("conta"),
@@ -100,25 +96,23 @@ public class ContaRepository {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            throw e; // Opcional: relança a exceção para tratamento externo
+            throw e;
         }
 
         return contas;
     }
 
-    // Método para atualizar o saldo de uma conta
     public void atualizarSaldo(Conta conta) throws SQLException {
         String sql = "UPDATE Conta SET saldo = ? WHERE banco = ? AND agencia = ? AND conta = ?";
 
         try (Connection conn = dataBaseConnection.getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setDouble(1, conta.getSaldo()); // Define o novo saldo
-            pstmt.setString(2, conta.getBanco().getNome()); // Nome do banco
-            pstmt.setString(3, conta.getAgencia()); // Agência
-            pstmt.setString(4, conta.getConta()); // Número da conta
+            pstmt.setDouble(1, conta.getSaldo());
+            pstmt.setString(2, conta.getBanco().getNome());
+            pstmt.setString(3, conta.getAgencia());
+            pstmt.setString(4, conta.getConta());
 
-            // Executa a atualização
             int rowsUpdated = pstmt.executeUpdate();
             if (rowsUpdated == 0) {
                 throw new IllegalArgumentException("Conta não encontrada para atualização.");
@@ -127,18 +121,17 @@ public class ContaRepository {
 
         } catch (SQLException e) {
             System.err.println("Erro ao atualizar saldo: " + e.getMessage());
-            throw e; // Re-lança a exceção
+            throw e;
         }
     }
 
-    // Método para excluir uma conta
     public void excluirConta(Connection conn, String banco, String agencia, String conta) throws SQLException {
         String sql = "DELETE FROM conta WHERE banco=? AND agencia = ? AND  conta = ? ";
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
-            closeConnection = true; // Marca para fechar a conexão depois
+            conn = dataBaseConnection.getConnection();
+            closeConnection = true;
         }
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -150,7 +143,7 @@ public class ContaRepository {
         } finally {
             if (closeConnection && conn != null) {
                 try {
-                    conn.close(); // Fecha a conexão se foi criada aqui
+                    conn.close();
                 } catch (SQLException e) {
                     e.getMessage();
                 }
@@ -170,54 +163,51 @@ public class ContaRepository {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    // Cria e retorna o objeto Conta com os dados obtidos
                     Conta contaObj = new Conta();
-                    contaObj.setAgencia(rs.getString("agencia")); // Obtém o campo agencia
-                    contaObj.setConta(rs.getString("conta")); // O número da conta
-                    contaObj.setSaldo(rs.getDouble("saldo")); // Obtém o saldo
+                    contaObj.setAgencia(rs.getString("agencia"));
+                    contaObj.setConta(rs.getString("conta"));
+                    contaObj.setSaldo(rs.getDouble("saldo"));
                     return contaObj;
                 } else {
-                    return null; // Retorna null se não encontrar a conta
+                    return null;
                 }
             }
         }
     }
 
-    // Método para listar todas as contas de um banco específico
     public List<Conta> listarContasPorBanco(Connection conn, String bancoNome) throws SQLException {
         String sql = "SELECT * FROM conta WHERE banco = ?";
         List<Conta> contas = new ArrayList<>();
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
-            closeConnection = true; // Marca para fechar a conexão depois
+            conn = dataBaseConnection.getConnection();
+            closeConnection = true;
         }
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, bancoNome); // Define o nome do banco na consulta
+            pstmt.setString(1, bancoNome);
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                // Cria uma nova conta a partir dos resultados
                 Conta conta = new Conta(rs.getString("agencia"), rs.getString("conta"), rs.getDouble("saldo"),
                         bancoRepository.buscarBanco(rs.getString("banco")));
-                contas.add(conta); // Adiciona a conta à lista
+                contas.add(conta);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.getMessage();
             throw new SQLException("Erro ao listar contas: " + e.getMessage(), e);
         } finally {
             if (closeConnection && conn != null) {
                 try {
-                    conn.close(); // Fecha a conexão se foi criada aqui
+                    conn.close();
                 } catch (SQLException e) {
                     e.getMessage();
                 }
             }
         }
 
-        return contas; // Retorna a lista de contas
+        return contas;
     }
 
 }

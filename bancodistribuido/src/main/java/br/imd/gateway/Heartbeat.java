@@ -3,7 +3,6 @@ package br.imd.gateway;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
@@ -93,20 +92,13 @@ public class Heartbeat implements Runnable {
         while (true) {
             try {
                 Socket clientSocket = tcpServerSocket.accept();
-                new Thread(() -> handleTCPClient(clientSocket)).start();
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                String request = in.readLine();
+                int serverPort = Integer.parseInt(request.trim());
+                handleServerResponse(serverPort, true);
             } catch (IOException e) {
                 System.err.println("Erro ao aceitar conexão TCP: " + e.getMessage());
             }
-        }
-    }
-
-    private void handleTCPClient(Socket clientSocket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
-            String request = in.readLine();
-            int serverPort = Integer.parseInt(request.trim());
-            handleServerResponse(serverPort, true);
-        } catch (IOException | NumberFormatException e) {
-            System.err.println("Erro ao tratar conexão TCP: " + e.getMessage());
         }
     }
 
@@ -135,7 +127,6 @@ public class Heartbeat implements Runnable {
     }
 
     private void checkServers() {
-        // System.out.println("portas ativas: " + activeServers);
         long currentTime = System.currentTimeMillis();
         for (Integer port : new HashSet<>(activeServers)) {
             if (lastResponseTimes.containsKey(port) &&

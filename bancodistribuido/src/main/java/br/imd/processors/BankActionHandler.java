@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import br.imd.entity.Banco;
-import br.imd.entity.Conta; // Certifique-se de que você tem uma classe Conta para listar
+import br.imd.entity.Conta;
 import br.imd.service.BankManager;
 
 public class BankActionHandler {
@@ -15,7 +15,6 @@ public class BankActionHandler {
         this.bankManager = new BankManager();
     }
 
-    // Método que lida com as ações recebidas e retorna a resposta ao cliente
     public String handleAction(String action, String[] parts) throws SQLException {
 
         switch (action.toUpperCase().trim()) {
@@ -42,7 +41,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a ação de transferência
     private String handleTransferir(String[] parts) {
         if (parts.length == 8) {
             String bancoOrigem = parts[1];
@@ -60,7 +58,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a ação de saque
     private String handleSacar(String[] parts) throws SQLException {
         if (parts.length == 5) {
             String banco = parts[1];
@@ -74,7 +71,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a criação de conta
     private String handleCriarConta(String[] parts) throws SQLException {
         if (parts.length == 5) {
             String banco = parts[1];
@@ -88,7 +84,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a criação de banco
     private String handleCriarBanco(String[] parts) throws SQLException {
         if (parts.length == 2) {
             String bancoNome = parts[1];
@@ -99,7 +94,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a ação de depósito
     private String handleDepositar(String[] parts) throws SQLException {
         if (parts.length == 5) {
             String banco = parts[1];
@@ -113,36 +107,32 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a ação de listar contas
     private String handleListarContas(String[] parts) throws SQLException {
         List<Conta> contas;
 
-        if (parts.length == 2) { // Quando o nome do banco é fornecido
+        if (parts.length == 2) {
             String banco = parts[1];
             contas = bankManager.listarContas(banco);
-        } else { // Quando nenhum parâmetro é fornecido
-            contas = bankManager.listarContas(); // Este método deve retornar todas as contas
+        } else {
+            contas = bankManager.listarContas();
         }
 
         StringBuilder resposta = new StringBuilder("Contas: ");
         for (Conta conta : contas) {
-            resposta.append(conta.toString()).append(", "); // Assegure-se de que a classe Conta tenha um método
-                                                            // toString
+            resposta.append(conta.toString()).append(", ");
         }
         return resposta + " OK";
     }
 
-    // Lida com a ação de listar bancos
     private String handleListarBancos(String[] parts) throws SQLException {
         List<Banco> bancos = bankManager.listarBancos();
         StringBuilder resposta = new StringBuilder("Bancos: ");
         for (Banco banco : bancos) {
-            resposta.append(banco.getNome()).append(", "); // Assegure-se de que a classe Banco tenha o método getNome
+            resposta.append(banco.getNome()).append(", ");
         }
         return resposta + "OK";
     }
 
-    // Lida com a ação de excluir conta
     private String handleExcluirConta(String[] parts) throws SQLException {
         if (parts.length == 4) {
             String banco = parts[1];
@@ -155,7 +145,6 @@ public class BankActionHandler {
         }
     }
 
-    // Lida com a ação de excluir banco
     private String handleExcluirBanco(String[] parts) throws SQLException {
         if (parts.length == 2) {
             String bancoNome = parts[1];

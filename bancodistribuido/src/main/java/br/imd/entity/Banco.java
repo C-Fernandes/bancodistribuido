@@ -1,7 +1,7 @@
 package br.imd.entity;
 
-public class Banco { // Identificador único do banco
-    private String nome; // Nome do banco
+public class Banco {
+    private String nome;
 
     public Banco(String nome) {
         this.nome = nome;

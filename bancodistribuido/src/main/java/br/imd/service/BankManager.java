@@ -25,13 +25,11 @@ public class BankManager {
     public String transferir(String bancoOrigemNome, String agenciaOrigem, String contaNumOrigem,
             String bancoDestinoNome, String agenciaDestino, String contaNumDestino, double valor) {
         Connection conn = null;
-        Conta[] contas = new Conta[2]; // Array para armazenar as contas
+        Conta[] contas = new Conta[2];
 
         try {
             conn = dataBaseConnection.getConnection();
-            conn.setAutoCommit(false); // Desativa o auto-commit para iniciar a transação
-
-            // Criação da thread para preparar o saque
+            conn.setAutoCommit(false);
             Thread threadSaque = new Thread(() -> {
                 try (Connection innerConn = dataBaseConnection.getConnection()) {
                     try {
@@ -47,7 +45,6 @@ public class BankManager {
                 }
             });
 
-            // Criação da thread para preparar o depósito
             Thread threadDeposito = new Thread(() -> {
                 try (Connection innerConn = dataBaseConnection.getConnection()) {
                     contas[1] = bancoService.prepararParaDeposito(bancoDestinoNome, innerConn, agenciaDestino,
@@ -57,7 +54,6 @@ public class BankManager {
                 }
             });
 
-            // Inicia as threads
             threadSaque.start();
             threadDeposito.start();
 
@@ -67,7 +63,7 @@ public class BankManager {
             if (contas[0] == null || contas[1] == null) {
                 return "Não foi possivel seguir com a transação";
             }
-            long logId = logWriteAhead(contas[0], contas[1], valor, conn); // Grava os logs de desfazer e refazer
+            long logId = logWriteAhead(contas[0], contas[1], valor, conn);
 
             double saldoOrigemAntes = contas[0].getSaldo();
             double saldoDestinoAntes = contas[1].getSaldo();
@@ -78,17 +74,15 @@ public class BankManager {
             contas[1].setSaldo(saldoDestinoAntes + valor);
             contaService.atualizarSaldo(contas[1]);
 
-            // Atualiza o log para refletir que a operação foi realizada
-            updateLogStatus(logId, "COMPLETED", conn); // Atualiza o log para status COMPLETED
+            updateLogStatus(logId, "COMPLETED", conn);
 
-            // Se tudo ocorrer bem, realiza o commit
             conn.commit();
             return "Transferência realizada com sucesso! OK";
 
         } catch (SQLException e) {
             if (conn != null) {
                 try {
-                    conn.rollback(); // Desfaz em caso de erro
+                    conn.rollback();
                 } catch (SQLException ex) {
                     return "Erro ao reverter a transação: " + ex.getMessage();
                 }
@@ -97,7 +91,7 @@ public class BankManager {
         } catch (Exception e) {
             if (conn != null) {
                 try {
-                    conn.rollback(); // Desfaz em caso de erro inesperado
+                    conn.rollback();
                 } catch (SQLException ex) {
                     return "Erro ao reverter a transação: " + ex.getMessage();
                 }
@@ -106,7 +100,7 @@ public class BankManager {
         } finally {
             if (conn != null) {
                 try {
-                    conn.close(); // Fecha a conexão
+                    conn.close();
                 } catch (SQLException e) {
                     return "Erro ao fechar a conexão: " + e.getMessage();
                 }
@@ -114,16 +108,14 @@ public class BankManager {
         }
     }
 
-    // Método para gravar logs de Write-Ahead Logging
     private long logWriteAhead(Conta contaOrigem, Conta contaDestino, double valor, Connection conn) {
-        long logId = -1; // ID do log que será retornado
+        long logId = -1;
 
-        // SQL para inserir o log na tabela wal_logs
         String sql = "INSERT INTO wal_logs (operation_type, conta_identificacao, valor, status, saldo_before) VALUES (?, ?, ?, ?, ?)";
+
         try (PreparedStatement pstmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, "TRANSFERENCIA");
 
-            // Identificação da conta como combinação de banco, agência e conta
             String contaIdentificacaoOrigem = contaOrigem.getBanco().getNome() + "," + contaOrigem.getAgencia() + ","
                     + contaOrigem.getConta();
             String contaIdentificacaoDestino = contaDestino.getBanco().getNome() + "," + contaDestino.getAgencia() + ","
@@ -131,13 +123,11 @@ public class BankManager {
 
             pstmt.setString(2, contaIdentificacaoOrigem + " -> " + contaIdentificacaoDestino);
             pstmt.setDouble(3, valor);
-            pstmt.setString(4, "PENDING"); // Status inicial como PENDING
+            pstmt.setString(4, "PENDING");
 
-            // Saldo antes da operação
             pstmt.setDouble(5, contaOrigem.getSaldo());
             pstmt.executeUpdate();
 
-            // Recupera o ID gerado
             try (var generatedKeys = pstmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     logId = generatedKeys.getLong(1);
@@ -147,10 +137,9 @@ public class BankManager {
             System.err.println("Erro ao gravar log: " + e.getMessage());
         }
 
-        return logId; // Retorna o ID do log
+        return logId;
     }
 
-    // Método para atualizar o status do log
     private void updateLogStatus(long logId, String status, Connection conn) {
         String sql = "UPDATE wal_logs SET status = ? WHERE id = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -162,7 +151,6 @@ public class BankManager {
         }
     }
 
-    // Método para realizar um depósito
     public String depositar(String bancoNome, String agencia, String contaNum, double valor) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Conta conta = bancoService.prepararParaDeposito(bancoNome, conn, agencia, contaNum);
@@ -179,7 +167,6 @@ public class BankManager {
         }
     }
 
-    // Método para realizar um saque
     public String sacar(String bancoNome, String agencia, String contaNum, double valor) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Conta conta = bancoService.prepararParaSaque(bancoNome, conn, agencia, contaNum, valor);
@@ -201,7 +188,6 @@ public class BankManager {
 
     }
 
-    // Método para criar um novo banco
     public String criarBanco(Banco banco) {
         try {
             bancoService.criarBanco(banco);
@@ -213,7 +199,6 @@ public class BankManager {
         }
     }
 
-    // Método para criar uma nova conta
     public String criarConta(String bancoNome, Conta conta) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Banco banco = bancoService.buscarBanco(bancoNome);
@@ -229,7 +214,6 @@ public class BankManager {
         }
     }
 
-    // Sobrecarga do método para criar uma conta com atributos simples
     public String criarConta(String bancoNome, String agencia, String contaNum, double saldo) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             Banco banco = bancoService.buscarBanco(bancoNome);
@@ -245,7 +229,6 @@ public class BankManager {
         }
     }
 
-    // Método para excluir um banco
     public String excluirBanco(String bancoNome) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             bancoService.excluirBanco(bancoNome);
@@ -257,7 +240,6 @@ public class BankManager {
         }
     }
 
-    // Método para excluir uma conta
     public String excluirConta(String bancoNome, String agencia, String contaNum) {
         try (Connection conn = dataBaseConnection.getConnection()) {
             contaService.excluirConta(conn, bancoNome, agencia, contaNum);
@@ -284,10 +266,10 @@ public class BankManager {
             return contaService.listarContas();
         } catch (SQLException e) {
             System.err.println("Erro ao listar contas: " + e.getMessage());
-            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+            return new ArrayList<>();
         } catch (Exception e) {
             System.err.println("Erro inesperado ao listar contas: " + e.getMessage());
-            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+            return new ArrayList<>();
         }
     }
 
@@ -296,10 +278,10 @@ public class BankManager {
             return contaService.listarContasPorBanco(conn, banco);
         } catch (SQLException e) {
             System.err.println("Erro ao listar contas do banco " + banco + ": " + e.getMessage());
-            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+            return new ArrayList<>();
         } catch (Exception e) {
             System.err.println("Erro inesperado ao listar contas do banco " + banco + ": " + e.getMessage());
-            return new ArrayList<>(); // Retorna uma lista vazia em caso de erro
+            return new ArrayList<>();
         }
     }
 }

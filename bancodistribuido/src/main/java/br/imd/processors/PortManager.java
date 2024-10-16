@@ -18,26 +18,23 @@ public class PortManager {
     }
 
     public int allocatePort() {
-        Integer port = freePorts.poll(); // Remove uma porta livre
+        Integer port = freePorts.poll();
         if (port != null) {
-            occupiedPorts.add(port); // Adiciona à lista de ocupadas
+            occupiedPorts.add(port);
         }
 
-        // Verifica se a porta alocada é maior que o endPort
         if (port != null && port > endPort) {
             System.out.println("Porta alocada excede o limite, reiniciando para a primeira porta livre.");
-            port = freePorts.peek(); // Define a porta como a primeira porta livre
+            port = freePorts.peek();
         }
 
-        return port != null ? port : -1; // Retorna -1 se não houver porta livre
+        return port != null ? port : -1;
     }
 
     public void releasePort(int port) {
         if (occupiedPorts.remove(port)) {
-            freePorts.add(port); // Adiciona à lista de livres novamente
+            freePorts.add(port);
         }
     }
-
-    // Método para retornar o valor de endPort
 
 }

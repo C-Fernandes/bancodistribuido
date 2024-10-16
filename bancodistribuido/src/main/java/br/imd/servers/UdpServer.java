@@ -12,20 +12,18 @@ import br.imd.processors.MessageProcessor;
 
 public class UdpServer {
     private MessageProcessor messageProcessor;
-    private BankActionHandler actionHandler; // Adicionando o manipulador de ações
+    private BankActionHandler actionHandler;
     private ScheduledExecutorService heartbeatExecutor;
-    private int serverPort; // Armazenar a porta do servidor
+    private int serverPort;
 
     public UdpServer(int port) {
         this.messageProcessor = new MessageProcessor();
-        this.actionHandler = new BankActionHandler(); // Instanciando o manipulador de ações
-        this.serverPort = port; // Armazenando a porta do servidor
+        this.actionHandler = new BankActionHandler();
+        this.serverPort = port;
 
-        // Iniciar o executor agendado para enviar heartbeat
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         scheduler.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS);
 
-        // Iniciar o servidor UDP
         startUdpServer();
     }
 
@@ -44,13 +42,11 @@ public class UdpServer {
                 String responseMessage;
 
                 if (parts != null) {
-                    String action = parts[0]; // Ação extraída da mensagem
-                    responseMessage = actionHandler.handleAction(action, parts); // Chama o manipulador de ações
+                    String action = parts[0];
+                    responseMessage = actionHandler.handleAction(action, parts);
                 } else {
                     responseMessage = "Mensagem malformada.";
                 }
-
-                // Envia a resposta de volta ao cliente
                 byte[] sendData = responseMessage.getBytes();
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();
@@ -64,11 +60,11 @@ public class UdpServer {
     }
 
     private void sendHeartbeat() {
-        String heartbeatMessage = Integer.toString(serverPort); // Enviando a porta
+        String heartbeatMessage = Integer.toString(serverPort);
         try (DatagramSocket socket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName("localhost");
             DatagramPacket sendPacket = new DatagramPacket(heartbeatMessage.getBytes(), heartbeatMessage.length(),
-                    address, 1); // Enviar para a porta 8000
+                    address, 1);
             socket.send(sendPacket);
         } catch (Exception e) {
             System.out.println("Falha ao enviar heartbeat: " + e.getMessage());
@@ -76,7 +72,7 @@ public class UdpServer {
     }
 
     public static void main(String[] args) {
-        int port = Integer.parseInt(args[0]); // Lê a porta a partir dos argumentos
+        int port = Integer.parseInt(args[0]);
         new UdpServer(port);
     }
 }
