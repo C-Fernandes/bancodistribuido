@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -73,7 +74,6 @@ public class ApiGateway {
                         .equals(exchange.getRequestMethod())) {
                     executor.submit(() -> {
                         try {
-                            System.out.println("Recebendo http");
                             handleHttpRequest(exchange);
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -113,7 +113,8 @@ public class ApiGateway {
         try (ServerSocket tcpSocket = new ServerSocket(GATEWAY_PORT_TCP)) {
             while (true) {
                 Socket clientSocket = tcpSocket.accept();
-                executor.submit(new GatewayHandler(clientSocket));
+                executor.submit(() -> processTcpRequest(clientSocket));
+
             }
         } catch (IOException e) {
             e.printStackTrace(); // Imprimir o stack trace da exceção
@@ -209,78 +210,59 @@ public class ApiGateway {
         }
     }
 
-    class GatewayHandler implements Callable<Void> {
-        private final Socket clientSocket;
+    private void processTcpRequest(Socket clientSocket) {
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter outToClient = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-        public GatewayHandler(Socket socket) {
-            this.clientSocket = socket;
-        }
-
-        @Override
-        public Void call() {
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                    PrintWriter outToClient = new PrintWriter(clientSocket.getOutputStream(), true)) {
-
-                String request = in.readLine();
-                System.out.println("(" + request + ")");
-                if (request == null) {
-                    return null; // Se não houver requisição, termina a execução
-                }
-
-                processServerRequest(request, outToClient);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        private void processServerRequest(String request, PrintWriter outToClient) throws IOException {
+            String request = in.readLine();
+            // System.out.println("(" + request + ")");
             try (Socket serverSocket = new Socket()) {
                 int availableServerPort = getAvailableServerPort();
-                System.out.println("Conectando ao servidor na porta: " + availableServerPort);
-
+                // System.out.println("Conectando ao servidor na porta: " +
+                // availableServerPort);
                 serverSocket.connect(new InetSocketAddress("localhost", availableServerPort), 5000);
 
                 PrintWriter outToServer = new PrintWriter(serverSocket.getOutputStream(), true);
-                outToServer.println(request); // Envia a requisição ao servidor
+                outToServer.println(request);
 
                 BufferedReader serverResponse = new BufferedReader(
                         new InputStreamReader(serverSocket.getInputStream()));
-                String response = serverResponse.readLine(); // Espera pela resposta do servidor
-                System.out.println("Response: " + response);
+                String response = serverResponse.readLine();
+                // System.out.println("Response: " + response);
 
                 if (response != null) {
                     outToClient.println("Resposta do servidor: " + response);
-                    System.out.println("Resposta enviada ao cliente: " + response);
+                    // System.out.println("Resposta enviada ao cliente: " + response);
+                } else {
+
+                    // System.err.println("Resposta do servidor é null.");
                 }
             } catch (SocketTimeoutException e) {
                 System.err.println("Timeout ao esperar a resposta do servidor.");
-                // Não envia nada ao cliente neste caso
+
             } catch (Exception e) {
                 e.getMessage();
             }
-        }
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private int getAvailableServerPort() {
-        // Sincroniza o acesso ao activeServers para garantir que não haja alteração
-        // concorrente
         synchronized (activeServers) {
             if (activeServers.isEmpty()) {
                 throw new RuntimeException("Nenhum servidor disponível.");
             }
 
-            // Converte para uma lista para permitir a indexação
             List<Integer> activeServersList = new ArrayList<>(activeServers);
+            int size = activeServersList.size();
+            int currentIndex = serverIndex.get();
 
-            // Calcula o índice para round robin
-            int index = serverIndex.getAndIncrement() % activeServersList.size();
-
-            // Retorna a porta do servidor no índice calculado
-            System.out.println(activeServersList.get(index));
-            return activeServersList.get(index);
+            int selectedPort = activeServersList.get(currentIndex % size);
+            serverIndex.set((currentIndex + 1) % size);
+            System.out.println("porta enviada: " + selectedPort);
+            return selectedPort;
         }
     }
 

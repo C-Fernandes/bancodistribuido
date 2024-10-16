@@ -32,25 +32,23 @@ public class HTTPServer {
         server.start();
         System.out.println("Servidor HTTP iniciado na porta " + port);
 
-        // Inicia o agendamento para enviar heartbeat via HTTP
         heartbeatExecutor = Executors.newScheduledThreadPool(1);
-        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // A cada 3 segundos
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS);
     }
 
     public static void main(String[] args) throws IOException {
-        new HTTPServer(Integer.parseInt(args[0])); // Porta como argumento
+        new HTTPServer(Integer.parseInt(args[0]));
     }
 
     private void sendHeartbeat() {
         try {
-            URL url = new URL("http://localhost:3/heartbeat"); // URL do endpoint do heartbeat
+            URL url = new URL("http://localhost:3/heartbeat");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "text/plain"); // Mudado para text/plain
+            connection.setRequestProperty("Content-Type", "text/plain");
 
-            // Enviando apenas a porta como string
-            String heartbeatMessage = String.valueOf(port); // Corpo do heartbeat
+            String heartbeatMessage = String.valueOf(port);
 
             try (OutputStream os = connection.getOutputStream()) {
                 os.write(heartbeatMessage.getBytes());
@@ -58,12 +56,7 @@ public class HTTPServer {
             }
 
             int responseCode = connection.getResponseCode();
-            if (responseCode == 200) {
-                // System.out.println("Heartbeat enviado com sucesso via HTTP.");
-            } else {
-                // System.out.println("Falha ao enviar heartbeat. Código de resposta: " +
-                // responseCode);
-            }
+
         } catch (IOException e) {
             System.out.println("Erro ao enviar heartbeat via HTTP: " + e.getMessage());
         }
@@ -88,7 +81,6 @@ public class HTTPServer {
             try {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes());
 
-                // Determina a ação com base no caminho
                 String action = "";
 
                 switch (method) {
@@ -96,18 +88,15 @@ public class HTTPServer {
                         switch (path) {
                             case "/depositar":
                                 action = "DEPOSITAR";
-                                requestBody = "DEPOSITAR-" + requestBody; // Ação DEPOSITAR como primeira parte do
-                                                                          // requestBody
+                                requestBody = "DEPOSITAR-" + requestBody;
                                 break;
                             case "/criarConta":
                                 action = "CRIAR_CONTA";
-                                requestBody = "CRIAR_CONTA-" + requestBody; // Ação CRIAR_CONTA como primeira parte do
-                                                                            // requestBody
+                                requestBody = "CRIAR_CONTA-" + requestBody;
                                 break;
                             case "/criarBanco":
                                 action = "CRIAR_BANCO";
-                                requestBody = "CRIAR_BANCO-" + requestBody; // Ação CRIAR_BANCO como primeira parte do
-                                                                            // requestBody
+                                requestBody = "CRIAR_BANCO-" + requestBody;
                                 break;
                             default:
                                 responseMessage = "Ação não reconhecida para POST.";
@@ -118,12 +107,11 @@ public class HTTPServer {
                         switch (path) {
                             case "/sacar":
                                 action = "SACAR";
-                                requestBody = "SACAR-" + requestBody; // Ação SACAR como primeira parte do requestBody
+                                requestBody = "SACAR-" + requestBody;
                                 break;
                             case "/transferir":
                                 action = "TRANSFERIR";
-                                requestBody = "TRANSFERIR-" + requestBody; // Ação TRANSFERIR como primeira parte do
-                                                                           // requestBody
+                                requestBody = "TRANSFERIR-" + requestBody;
                                 break;
                             default:
                                 responseMessage = "Ação não reconhecida para PUT.";
@@ -134,13 +122,11 @@ public class HTTPServer {
                         switch (path) {
                             case "/listarContas":
                                 action = "LISTAR_CONTAS";
-                                requestBody = "LISTAR_CONTAS-" + requestBody; // Ação LISTAR_CONTAS como primeira parte
-                                                                              // do requestBody
+                                requestBody = "LISTAR_CONTAS-" + requestBody;
                                 break;
                             case "/listarBancos":
                                 action = "LISTAR_BANCOS";
-                                requestBody = "LISTAR_BANCOS-" + requestBody; // Ação LISTAR_BANCOS como primeira parte
-                                                                              // do requestBody
+                                requestBody = "LISTAR_BANCOS-" + requestBody;
                                 break;
                             default:
                                 responseMessage = "Ação não reconhecida para GET.";
@@ -151,13 +137,11 @@ public class HTTPServer {
                         switch (path) {
                             case "/excluirConta":
                                 action = "EXCLUIR_CONTA";
-                                requestBody = "EXCLUIR_CONTA-" + requestBody; // Ação EXCLUIR_CONTA como primeira parte
-                                                                              // do requestBody
+                                requestBody = "EXCLUIR_CONTA-" + requestBody;
                                 break;
                             case "/excluirBanco":
                                 action = "EXCLUIR_BANCO";
-                                requestBody = "EXCLUIR_BANCO-" + requestBody; // Ação EXCLUIR_BANCO como primeira parte
-                                                                              // do requestBody
+                                requestBody = "EXCLUIR_BANCO-" + requestBody;
                                 break;
                             default:
                                 responseMessage = "Ação não reconhecida para DELETE.";
@@ -169,7 +153,6 @@ public class HTTPServer {
                         break;
                 }
 
-                // Se a ação for válida, chama handleAction
                 if (!action.isEmpty() && responseMessage.isEmpty()) {
                     String[] parts = messageProcessor.processMessage(requestBody);
                     System.out.println("Mensagem para ser processada: " + requestBody);

@@ -6,18 +6,15 @@ import java.sql.SQLException;
 
 public class DataBaseConnection {
     private final String url = "jdbc:mysql://localhost:3306/banco?allowPublicKeyRetrieval=true&useSSL=false";
-    private final String user = "root"; // Substitua pelo seu usuário
-    private final String password = "Clara.951"; // Substitua pela sua senha
+    private final String user = "root";
+    private final String password = "Clara.951";
 
     public Connection getConnection() {
         Connection connection = null;
         try {
-            // Carregar o driver JDBC
-            Class.forName("com.mysql.cj.jdbc.Driver"); // Isso pode ser opcional em versões mais recentes
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
-            // Estabelecendo a conexão
             connection = DriverManager.getConnection(url, user, password);
-            // System.out.println("Conexão estabelecida com sucesso!");
         } catch (ClassNotFoundException e) {
             System.out.println("Driver JDBC não encontrado: " + e.getMessage());
             e.printStackTrace();

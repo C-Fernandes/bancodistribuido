@@ -20,7 +20,7 @@ import br.imd.processors.BankActionHandler;
 import br.imd.processors.MessageProcessor;
 
 public class TcpServer {
-    private int port; // Porta do servidor
+    private int port;
 
     public TcpServer(int port) throws IOException {
         this.port = port; // Armazena a porta do servidor
@@ -35,7 +35,7 @@ public class TcpServer {
 
         // Inicia um agendador para enviar a porta a cada 3 segundos
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-        scheduler.scheduleAtFixedRate(this::sendPort, 0, 3, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::sendTcpPort, 0, 3, TimeUnit.SECONDS);
 
         while (true) {
             Socket socket = null;
@@ -48,17 +48,13 @@ public class TcpServer {
         }
     }
 
-    private void sendPort() {
-        try (DatagramSocket socket = new DatagramSocket()) {
+    private void sendTcpPort() {
+        try (Socket socket = new Socket("localhost", 2)) { // Conecta ao endereço e porta desejados
             String message = Integer.toString(port); // Mensagem a ser enviada
-            byte[] buffer = message.getBytes();
-            InetAddress address = InetAddress.getByName("localhost"); // Ou o endereço do receptor
-
-            // Cria o pacote de datagramas
-            DatagramPacket packet = new DatagramPacket(buffer, buffer.length, address, 8000);
-            socket.send(packet); // Envia o pacote
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true); // Flush automático
+            out.println(message); // Envia a mensagem com uma quebra de linha
         } catch (IOException e) {
-            System.err.println("Erro ao enviar a porta: " + e.getMessage());
+            System.err.println("Erro ao enviar a porta via TCP: " + e.getMessage());
         }
     }
 

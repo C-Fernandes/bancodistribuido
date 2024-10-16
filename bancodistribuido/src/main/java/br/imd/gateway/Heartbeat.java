@@ -25,16 +25,16 @@ import com.sun.net.httpserver.HttpServer;
  * Classe Heartbeat que monitora a saúde dos servidores ativos.
  */
 public class Heartbeat implements Runnable {
-    private static final int SERVER_TIMEOUT = 4000; // Timeout em ms
-    private final int udpPort = 1; // Porta para UDP
-    private final int tcpPort = 2; // Porta para TCP
-    private final int httpPort = 3; // Porta para HTTP
-    private DatagramSocket udpSocket; // Socket UDP para escutar
-    private ServerSocket tcpServerSocket; // Socket TCP para escutar
-    private HttpServer httpServer; // HttpServer para escutar
-    private final Set<Integer> activeServers; // Conjunto de servidores ativos
-    private final Map<Integer, Long> lastResponseTimes; // Último tempo de resposta de cada servidor
-    private final ScheduledExecutorService scheduler; // Executor para verificação periódica
+    private static final int SERVER_TIMEOUT = 3000;
+    private final int udpPort = 1;
+    private final int tcpPort = 2;
+    private final int httpPort = 3;
+    private DatagramSocket udpSocket;
+    private ServerSocket tcpServerSocket;
+    private HttpServer httpServer;
+    private final Set<Integer> activeServers;
+    private final Map<Integer, Long> lastResponseTimes;
+    private final ScheduledExecutorService scheduler;
 
     public Heartbeat(Set<Integer> activeServers) {
         this.activeServers = activeServers;
@@ -43,24 +43,19 @@ public class Heartbeat implements Runnable {
         this.lastResponseTimes = new HashMap<>();
         this.scheduler = Executors.newScheduledThreadPool(1);
         try {
-            // Inicializa o DatagramSocket para escuta UDP
             this.udpSocket = new DatagramSocket(udpPort);
-            // Inicializa o ServerSocket para escuta TCP
             this.tcpServerSocket = new ServerSocket(tcpPort);
-            // Inicializa o HttpServer para escuta HTTP
             new Thread(() -> {
                 try {
-                    // Inicializa o HttpServer para escuta HTTP
-                    System.out.println("Inicializando o HttpServer...");
                     this.httpServer = HttpServer.create(new InetSocketAddress(httpPort), 0);
                     this.httpServer.createContext("/heartbeat", new HttpHandler() {
                         @Override
                         public void handle(HttpExchange exchange) throws IOException {
-                            handleHttpRequest(exchange); // Chama seu método para processar a requisição
+                            handleHttpRequest(exchange);
                         }
                     });
                     this.httpServer.setExecutor(Executors.newSingleThreadExecutor());
-                    this.httpServer.start(); // Inicia o servidor HTTP
+                    this.httpServer.start();
                 } catch (IOException e) {
                     e.printStackTrace();
                     throw new RuntimeException("Falha ao criar o HttpServer");
@@ -72,17 +67,11 @@ public class Heartbeat implements Runnable {
         }
     }
 
-    /**
-     * Inicia o monitoramento dos servidores.
-     */
     @Override
     public void run() {
-        // Inicia um thread para escutar mensagens UDP
         new Thread(this::listenForUDPMessages).start();
-        // Inicia um thread para escutar mensagens TCP
         new Thread(this::listenForTCPConnections).start();
-        // Inicia o agendador para verificar a saúde dos servidores periodicamente
-        scheduler.scheduleAtFixedRate(this::checkServers, 0, 5, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(this::checkServers, 0, 3, TimeUnit.SECONDS);
     }
 
     private void listenForUDPMessages() {
@@ -127,14 +116,13 @@ public class Heartbeat implements Runnable {
             int serverPort = Integer.parseInt(requestBody);
             handleServerResponse(serverPort, true);
 
-            // Enviar resposta 200 OK
-            exchange.sendResponseHeaders(200, 0); // Código de resposta 200 e tamanho da resposta 0
+            exchange.sendResponseHeaders(200, 0);
         } catch (Exception e) {
             System.err.println("Erro ao processar requisição HTTP: " + e.getMessage());
-            // Se desejar, envie uma resposta de erro
+
             exchange.sendResponseHeaders(500, -1);
         } finally {
-            exchange.close(); // Certifique-se de fechar o exchange
+            exchange.close();
         }
     }
 
@@ -147,6 +135,7 @@ public class Heartbeat implements Runnable {
     }
 
     private void checkServers() {
+        System.out.println("portas ativas: " + activeServers);
         long currentTime = System.currentTimeMillis();
         for (Integer port : new HashSet<>(activeServers)) {
             if (lastResponseTimes.containsKey(port) &&
