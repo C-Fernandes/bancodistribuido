@@ -68,7 +68,7 @@ public class UdpServer {
         try (DatagramSocket socket = new DatagramSocket()) {
             InetAddress address = InetAddress.getByName("localhost");
             DatagramPacket sendPacket = new DatagramPacket(heartbeatMessage.getBytes(), heartbeatMessage.length(),
-                    address, 8000); // Enviar para a porta 8000
+                    address, 1); // Enviar para a porta 8000
             socket.send(sendPacket);
         } catch (Exception e) {
             System.out.println("Falha ao enviar heartbeat: " + e.getMessage());

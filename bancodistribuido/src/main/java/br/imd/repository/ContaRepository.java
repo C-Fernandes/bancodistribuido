@@ -10,11 +10,11 @@ import java.util.List;
 import br.imd.entity.Conta;
 
 public class ContaRepository {
-    private DataBaseConnection databaseConnection;
+    private DataBaseConnection dataBaseConnection;
     private BancoRepository bancoRepository;
 
     public ContaRepository() {
-        this.databaseConnection = new DataBaseConnection();
+        this.dataBaseConnection = new DataBaseConnection();
         this.bancoRepository = new BancoRepository();
     }
 
@@ -24,7 +24,7 @@ public class ContaRepository {
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = databaseConnection.getConnection(); // Cria uma nova conexão
+            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
             closeConnection = true; // Marca para fechar a conexão depois
         }
 
@@ -54,7 +54,7 @@ public class ContaRepository {
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = databaseConnection.getConnection(); // Cria uma nova conexão
+            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
             closeConnection = true; // Marca para fechar a conexão depois
         }
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -85,7 +85,7 @@ public class ContaRepository {
         List<Conta> contas = new ArrayList<>();
 
         // Criação da conexão
-        try (Connection conn = databaseConnection.getConnection(); // Cria uma nova conexão
+        try (Connection conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
                 PreparedStatement pstmt = conn.prepareStatement(sql);
                 ResultSet rs = pstmt.executeQuery()) {
 
@@ -107,25 +107,27 @@ public class ContaRepository {
     }
 
     // Método para atualizar o saldo de uma conta
-    public void atualizarSaldo(Connection conn, Conta conta) throws SQLException {
+    public void atualizarSaldo(Conta conta) throws SQLException {
         String sql = "UPDATE Conta SET saldo = ? WHERE banco = ? AND agencia = ? AND conta = ?";
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = dataBaseConnection.getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
             pstmt.setDouble(1, conta.getSaldo()); // Define o novo saldo
-            pstmt.setString(2, conta.getBanco().getNome()); // O nome do banco associado à conta
-            pstmt.setString(3, conta.getAgencia()); // O número da agência
-            pstmt.setString(4, conta.getConta()); // O número da conta
+            pstmt.setString(2, conta.getBanco().getNome()); // Nome do banco
+            pstmt.setString(3, conta.getAgencia()); // Agência
+            pstmt.setString(4, conta.getConta()); // Número da conta
 
-            int rowsUpdated = pstmt.executeUpdate(); // Executa a atualização
-
+            // Executa a atualização
+            int rowsUpdated = pstmt.executeUpdate();
             if (rowsUpdated == 0) {
-                throw new IllegalArgumentException("Conta não encontrada para atualização."); // Lança exceção se
-                                                                                              // nenhuma linha for
-                                                                                              // atualizada
+                throw new IllegalArgumentException("Conta não encontrada para atualização.");
             }
+            System.out.println("Saldo atualizado com sucesso para a conta: " + conta.getConta());
+
         } catch (SQLException e) {
-            e.getMessage(); // Registra a exceção
-            throw e; // Re-lança a exceção para o tratamento adequado em outros níveis
+            System.err.println("Erro ao atualizar saldo: " + e.getMessage());
+            throw e; // Re-lança a exceção
         }
     }
 
@@ -135,7 +137,7 @@ public class ContaRepository {
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = databaseConnection.getConnection(); // Cria uma nova conexão
+            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
             closeConnection = true; // Marca para fechar a conexão depois
         }
 
@@ -188,7 +190,7 @@ public class ContaRepository {
         boolean closeConnection = false;
 
         if (conn == null) {
-            conn = databaseConnection.getConnection(); // Cria uma nova conexão
+            conn = dataBaseConnection.getConnection(); // Cria uma nova conexão
             closeConnection = true; // Marca para fechar a conexão depois
         }
 

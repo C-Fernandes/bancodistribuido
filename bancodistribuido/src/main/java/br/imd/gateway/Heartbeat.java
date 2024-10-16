@@ -135,7 +135,7 @@ public class Heartbeat implements Runnable {
     }
 
     private void checkServers() {
-        System.out.println("portas ativas: " + activeServers);
+        // System.out.println("portas ativas: " + activeServers);
         long currentTime = System.currentTimeMillis();
         for (Integer port : new HashSet<>(activeServers)) {
             if (lastResponseTimes.containsKey(port) &&

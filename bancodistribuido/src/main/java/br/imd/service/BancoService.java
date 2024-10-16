@@ -57,9 +57,11 @@ public class BancoService {
             conn.rollback();
             throw new IllegalArgumentException("Conta de origem não encontrada no banco informado.");
         }
-
+        System.out.println("Saldo: " + conta.getSaldo());
+        System.out.println("Valor: " + valor);
         // Verificar se a conta tem saldo suficiente
         if (conta.getSaldo() < valor) {
+
             conn.rollback();
             throw new IllegalArgumentException("Saldo insuficiente na conta.");
         }

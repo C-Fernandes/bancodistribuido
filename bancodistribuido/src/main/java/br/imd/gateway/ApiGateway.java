@@ -201,6 +201,7 @@ public class ApiGateway {
         } catch (IOException e) {
             e.printStackTrace(); // Imprimir o stack trace da exceção
         } finally {
+            System.out.println("Terminando processo");
             if (allocatedPort != -1) {
                 portManager.releasePort(allocatedPort);
             }
@@ -215,11 +216,11 @@ public class ApiGateway {
                 PrintWriter outToClient = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
             String request = in.readLine();
-            // System.out.println("(" + request + ")");
+            System.out.println("(" + request + ")");
             try (Socket serverSocket = new Socket()) {
                 int availableServerPort = getAvailableServerPort();
-                // System.out.println("Conectando ao servidor na porta: " +
-                // availableServerPort);
+                System.out.println("Conectando ao servidor na porta: " +
+                        availableServerPort);
                 serverSocket.connect(new InetSocketAddress("localhost", availableServerPort), 5000);
 
                 PrintWriter outToServer = new PrintWriter(serverSocket.getOutputStream(), true);
@@ -228,7 +229,7 @@ public class ApiGateway {
                 BufferedReader serverResponse = new BufferedReader(
                         new InputStreamReader(serverSocket.getInputStream()));
                 String response = serverResponse.readLine();
-                // System.out.println("Response: " + response);
+                System.out.println("Response: " + response);
 
                 if (response != null) {
                     outToClient.println("Resposta do servidor: " + response);
@@ -261,7 +262,7 @@ public class ApiGateway {
 
             int selectedPort = activeServersList.get(currentIndex % size);
             serverIndex.set((currentIndex + 1) % size);
-            System.out.println("porta enviada: " + selectedPort);
+            // System.out.println("porta enviada: " + selectedPort);
             return selectedPort;
         }
     }

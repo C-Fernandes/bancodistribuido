@@ -98,9 +98,9 @@ public class ContaService {
     }
 
     // Método para atualizar o saldo de uma conta
-    public void atualizarSaldo(Connection conn, Conta conta) throws SQLException {
+    public void atualizarSaldo(Conta conta) throws SQLException {
 
-        contaRepository.atualizarSaldo(conn, conta);
+        contaRepository.atualizarSaldo(conta);
     }
 
     // Método para excluir uma conta
