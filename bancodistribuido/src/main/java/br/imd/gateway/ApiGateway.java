@@ -2,18 +2,39 @@ package br.imd.gateway;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 
 import br.imd.processors.PortManager;
 
 public class ApiGateway {
-    private static final int GATEWAY_PORT = 8999;
-    private static final int[] SERVER_PORTS = { 9000, 9001, 9002 };
+    private static final int GATEWAY_PORT_UDP = 8999;
+    private static final int GATEWAY_PORT_TCP = 8998;
+    private static final int GATEWAY_PORT_HTTP = 8997;
     private static final Set<Integer> activeServers = ConcurrentHashMap.newKeySet(); // Concorrência melhorada
     private static final AtomicInteger serverIndex = new AtomicInteger(0);
     private static final int TIMEOUT = 10000; // Timeout de 10 segundos
@@ -24,10 +45,9 @@ public class ApiGateway {
     }
 
     public void start() {
-        System.out.println("Gateway escutando TCP e UDP na porta " + GATEWAY_PORT);
 
         // Inicia a verificação de heartbeat dos servidores
-        new Thread(new Heartbeat(8000, activeServers)).start();
+        new Thread(new Heartbeat(activeServers)).start();
 
         // Usando um pool de threads fixo para controlar o número de requisições
         ExecutorService executor = new ThreadPoolExecutor(
@@ -39,27 +59,44 @@ public class ApiGateway {
                                                      // cheio
         );
 
-        // Inicia o servidor TCP
         new Thread(() -> startTcpServer(executor)).start();
-
-        // Inicia o servidor UDP
         new Thread(() -> startUdpServer(executor)).start();
+        new Thread(() -> startHttpServer(executor)).start();
     }
 
-    private void startTcpServer(ExecutorService executor) {
-        try (ServerSocket tcpSocket = new ServerSocket(GATEWAY_PORT)) {
-            while (true) {
-                Socket clientSocket = tcpSocket.accept();
-                System.out.println("Requisição TCP recebida");
-                executor.submit(new GatewayHandler(clientSocket));
-            }
+    private void startHttpServer(ExecutorService executor) {
+        System.out.println("Gateway escutando HTTP na porta " + GATEWAY_PORT_HTTP);
+        try {
+            HttpServer httpServer = HttpServer.create(new InetSocketAddress(GATEWAY_PORT_HTTP), 0);
+            httpServer.createContext("/", exchange -> {
+                if ("POST".equals(exchange.getRequestMethod()) || "GET".equals(exchange.getRequestMethod()) || "PUT"
+                        .equals(exchange.getRequestMethod())) {
+                    executor.submit(() -> {
+                        try {
+                            System.out.println("Recebendo http");
+                            handleHttpRequest(exchange);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+                } else {
+                    String response = "Método HTTP não suportado";
+                    exchange.sendResponseHeaders(405, response.getBytes().length);
+                    OutputStream os = exchange.getResponseBody();
+                    os.write(response.getBytes());
+                    os.close();
+                }
+            });
+            httpServer.setExecutor(executor);
+            httpServer.start();
         } catch (IOException e) {
-            e.printStackTrace(); // Imprimir o stack trace da exceção
+            e.printStackTrace();
         }
     }
 
     private void startUdpServer(ExecutorService executor) {
-        try (DatagramSocket udpSocket = new DatagramSocket(GATEWAY_PORT)) {
+        System.out.println("Gateway escutando UDP na porta " + GATEWAY_PORT_UDP);
+        try (DatagramSocket udpSocket = new DatagramSocket(GATEWAY_PORT_UDP)) {
             while (true) {
                 byte[] receiveData = new byte[1024];
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
@@ -68,6 +105,57 @@ public class ApiGateway {
             }
         } catch (IOException e) {
             e.printStackTrace(); // Imprimir o stack trace da exceção
+        }
+    }
+
+    private void startTcpServer(ExecutorService executor) {
+        System.out.println("Gateway escutando TCP na porta " + GATEWAY_PORT_TCP);
+        try (ServerSocket tcpSocket = new ServerSocket(GATEWAY_PORT_TCP)) {
+            while (true) {
+                Socket clientSocket = tcpSocket.accept();
+                executor.submit(new GatewayHandler(clientSocket));
+            }
+        } catch (IOException e) {
+            e.printStackTrace(); // Imprimir o stack trace da exceção
+        }
+    }
+
+    private void handleHttpRequest(HttpExchange exchange) throws IOException {
+        String requestPath = exchange.getRequestURI().getPath(); // Obtém o caminho da requisição
+        InputStream requestBody = exchange.getRequestBody();
+        byte[] requestData = requestBody.readAllBytes();
+        int availableServerPort = getAvailableServerPort();
+        String serverUrl = "http://localhost:" + availableServerPort + requestPath; // Adiciona o caminho à URL do
+        HttpURLConnection conn = (HttpURLConnection) new URL(serverUrl).openConnection();
+        conn.setRequestMethod(exchange.getRequestMethod());
+        conn.setDoOutput(true);
+
+        try {
+            // Envia o corpo da requisição se existir
+            if (requestData.length > 0) {
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(requestData);
+                    os.flush();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(
+                    "Não foi possivel se conectar com o servidor: " + availableServerPort + ". " + e.getMessage());
+        }
+
+        // Aqui você formata a URL com base no caminho da requisição
+
+        // Recebe a resposta do servidor
+        int responseCode = conn.getResponseCode();
+        InputStream responseStream = (responseCode == HttpURLConnection.HTTP_OK) ? conn.getInputStream()
+                : conn.getErrorStream();
+        byte[] responseData = responseStream.readAllBytes();
+        System.out.println("Resposta recebida do servidor: " + responseCode);
+
+        // Envia a resposta de volta ao cliente
+        exchange.sendResponseHeaders(responseCode, responseData.length);
+        try (OutputStream responseBody = exchange.getResponseBody()) {
+            responseBody.write(responseData);
         }
     }
 
@@ -139,21 +227,12 @@ public class ApiGateway {
                     return null; // Se não houver requisição, termina a execução
                 }
 
-                if (request.startsWith("GET") || request.startsWith("POST")) {
-                    System.out.println("Requisição HTTP detectada: " + request);
-                    handleHttpRequest(request, outToClient);
-                } else {
-                    processServerRequest(request, outToClient);
-                }
+                processServerRequest(request, outToClient);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
             return null;
-        }
-
-        private void handleHttpRequest(String request, PrintWriter outToClient) throws IOException {
-            processServerRequest(request, outToClient);
         }
 
         private void processServerRequest(String request, PrintWriter outToClient) throws IOException {
@@ -186,14 +265,23 @@ public class ApiGateway {
     }
 
     private int getAvailableServerPort() {
-        int index = serverIndex.getAndIncrement() % SERVER_PORTS.length;
-        for (int i = 0; i < SERVER_PORTS.length; i++) {
-            int currentIndex = (index + i) % SERVER_PORTS.length;
-            int port = SERVER_PORTS[currentIndex];
-            if (activeServers.contains(port)) {
-                return port;
+        // Sincroniza o acesso ao activeServers para garantir que não haja alteração
+        // concorrente
+        synchronized (activeServers) {
+            if (activeServers.isEmpty()) {
+                throw new RuntimeException("Nenhum servidor disponível.");
             }
+
+            // Converte para uma lista para permitir a indexação
+            List<Integer> activeServersList = new ArrayList<>(activeServers);
+
+            // Calcula o índice para round robin
+            int index = serverIndex.getAndIncrement() % activeServersList.size();
+
+            // Retorna a porta do servidor no índice calculado
+            System.out.println(activeServersList.get(index));
+            return activeServersList.get(index);
         }
-        throw new RuntimeException("Nenhum servidor disponível.");
     }
+
 }

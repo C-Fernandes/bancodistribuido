@@ -11,8 +11,8 @@ public class BankActionHandler {
 
     private BankManager bankManager;
 
-    public BankActionHandler(BankManager bankManager) {
-        this.bankManager = bankManager;
+    public BankActionHandler() {
+        this.bankManager = new BankManager();
     }
 
     // Método que lida com as ações recebidas e retorna a resposta ao cliente

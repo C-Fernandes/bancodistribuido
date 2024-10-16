@@ -18,14 +18,11 @@ import java.util.concurrent.TimeUnit;
 
 import br.imd.processors.BankActionHandler;
 import br.imd.processors.MessageProcessor;
-import br.imd.service.BankManager;
 
 public class TcpServer {
-    private BankManager bankManager; // Instância do BankManager
     private int port; // Porta do servidor
 
     public TcpServer(int port) throws IOException {
-        this.bankManager = new BankManager(); // Inicializa o BankManager
         this.port = port; // Armazena a porta do servidor
         ServerSocket serverSocket = new ServerSocket(port);
 
@@ -44,7 +41,7 @@ public class TcpServer {
             Socket socket = null;
             try {
                 socket = serverSocket.accept();
-                executorService.execute(new Handler(socket, bankManager)); // Passa o BankManager para o Handler
+                executorService.execute(new Handler(socket));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -75,9 +72,9 @@ class Handler implements Runnable {
     private BankActionHandler actionHandler; // Instância do BankActionHandler
     private MessageProcessor messageProcessor;
 
-    public Handler(Socket socket, BankManager bankManager) {
+    public Handler(Socket socket) {
         this.socket = socket;
-        this.actionHandler = new BankActionHandler(bankManager); // Inicializa o BankActionHandler
+        this.actionHandler = new BankActionHandler(); // Inicializa o BankActionHandler
         this.messageProcessor = new MessageProcessor();
     }
 

@@ -2,8 +2,9 @@ package br.imd.servers;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.Socket;
+import java.net.URL;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,102 +16,202 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import br.imd.processors.BankActionHandler;
-import br.imd.service.BankManager;
+import br.imd.processors.MessageProcessor;
 
 public class HTTPServer {
-    private BankManager bankManager;
+    private int port;
     private ScheduledExecutorService heartbeatExecutor;
-    private int serverPort; // Armazenar a porta do servidor
+    private HttpServer server;
 
     public HTTPServer(int port) throws IOException {
-        this.bankManager = new BankManager();
-        this.serverPort = port; // Armazenar a porta do servidor
-
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 40);
-        server.createContext("/", new BankHandler(bankManager));
-        server.setExecutor(executorService); // Utiliza um pool de threads
+        this.port = port;
+        this.server = HttpServer.create(new InetSocketAddress(port), 0);
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+        server.createContext("/", new BankHandler());
+        server.setExecutor(executorService);
         server.start();
         System.out.println("Servidor HTTP iniciado na porta " + port);
 
-        // Configuração do heartbeat
-        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
-        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // Envia a porta a cada 3
-                                                                                            // segundos
-    }
-
-    private void sendHeartbeat() {
-        String heartbeatMessage = Integer.toString(serverPort); // Enviando a porta em vez de "ping"
-        try (Socket socket = new Socket("localhost", 8000)) { // Porta do servidor que receberá a mensagem
-            OutputStream os = socket.getOutputStream();
-            os.write(heartbeatMessage.getBytes());
-            os.flush();
-        } catch (IOException e) {
-            System.out.println("Falha ao enviar mensagem: " + e.getMessage());
-        }
+        // Inicia o agendamento para enviar heartbeat via HTTP
+        heartbeatExecutor = Executors.newScheduledThreadPool(1);
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 0, 3, TimeUnit.SECONDS); // A cada 3 segundos
     }
 
     public static void main(String[] args) throws IOException {
         new HTTPServer(Integer.parseInt(args[0])); // Porta como argumento
     }
 
-    static class BankHandler implements HttpHandler {
-        private BankManager bankManager;
-        private BankActionHandler bankActionHandler; // Adicionando a classe BankActionHandler
+    private void sendHeartbeat() {
+        try {
+            URL url = new URL("http://localhost:3/heartbeat"); // URL do endpoint do heartbeat
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "text/plain"); // Mudado para text/plain
 
-        public BankHandler(BankManager bankManager) {
-            this.bankManager = bankManager;
-            this.bankActionHandler = new BankActionHandler(bankManager); // Inicializando BankActionHandler
+            // Enviando apenas a porta como string
+            String heartbeatMessage = String.valueOf(port); // Corpo do heartbeat
+
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(heartbeatMessage.getBytes());
+                os.flush();
+            }
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                // System.out.println("Heartbeat enviado com sucesso via HTTP.");
+            } else {
+                // System.out.println("Falha ao enviar heartbeat. Código de resposta: " +
+                // responseCode);
+            }
+        } catch (IOException e) {
+            System.out.println("Erro ao enviar heartbeat via HTTP: " + e.getMessage());
+        }
+    }
+
+    static class BankHandler implements HttpHandler {
+        private MessageProcessor messageProcessor;
+        private BankActionHandler bankActionHandler;
+
+        public BankHandler() {
+            this.bankActionHandler = new BankActionHandler();
+            this.messageProcessor = new MessageProcessor();
         }
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String responseMessage = "";
+            String path = exchange.getRequestURI().getPath();
+            System.out.println(path);
             String method = exchange.getRequestMethod();
+            System.out.println(method);
+            try {
+                String requestBody = new String(exchange.getRequestBody().readAllBytes());
 
-            if ("GET".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method)) {
+                // Determina a ação com base no caminho
+                String action = "";
 
-                // Lê a solicitação
-                String recv = new String(exchange.getRequestBody().readAllBytes());
-                System.out.println("Requisição recebida: " + recv);
+                switch (method) {
+                    case "POST":
+                        switch (path) {
+                            case "/depositar":
+                                action = "DEPOSITAR";
+                                requestBody = "DEPOSITAR-" + requestBody; // Ação DEPOSITAR como primeira parte do
+                                                                          // requestBody
+                                break;
+                            case "/criarConta":
+                                action = "CRIAR_CONTA";
+                                requestBody = "CRIAR_CONTA-" + requestBody; // Ação CRIAR_CONTA como primeira parte do
+                                                                            // requestBody
+                                break;
+                            case "/criarBanco":
+                                action = "CRIAR_BANCO";
+                                requestBody = "CRIAR_BANCO-" + requestBody; // Ação CRIAR_BANCO como primeira parte do
+                                                                            // requestBody
+                                break;
+                            default:
+                                responseMessage = "Ação não reconhecida para POST.";
+                        }
+                        break;
 
-                // Aqui você pode usar o BankActionHandler diretamente
-                String[] parts = recv.split("-"); // Ajuste conforme necessário para separar os comandos
-                try {
-                    responseMessage = bankActionHandler.handleAction(parts[0], parts); // Chame o método handleAction
-                } catch (SQLException e) {
-                    responseMessage = "Erro no banco de dados: " + e.getMessage();
+                    case "PUT":
+                        switch (path) {
+                            case "/sacar":
+                                action = "SACAR";
+                                requestBody = "SACAR-" + requestBody; // Ação SACAR como primeira parte do requestBody
+                                break;
+                            case "/transferir":
+                                action = "TRANSFERIR";
+                                requestBody = "TRANSFERIR-" + requestBody; // Ação TRANSFERIR como primeira parte do
+                                                                           // requestBody
+                                break;
+                            default:
+                                responseMessage = "Ação não reconhecida para PUT.";
+                        }
+                        break;
+
+                    case "GET":
+                        switch (path) {
+                            case "/listarContas":
+                                action = "LISTAR_CONTAS";
+                                requestBody = "LISTAR_CONTAS-" + requestBody; // Ação LISTAR_CONTAS como primeira parte
+                                                                              // do requestBody
+                                break;
+                            case "/listarBancos":
+                                action = "LISTAR_BANCOS";
+                                requestBody = "LISTAR_BANCOS-" + requestBody; // Ação LISTAR_BANCOS como primeira parte
+                                                                              // do requestBody
+                                break;
+                            default:
+                                responseMessage = "Ação não reconhecida para GET.";
+                        }
+                        break;
+
+                    case "DELETE":
+                        switch (path) {
+                            case "/excluirConta":
+                                action = "EXCLUIR_CONTA";
+                                requestBody = "EXCLUIR_CONTA-" + requestBody; // Ação EXCLUIR_CONTA como primeira parte
+                                                                              // do requestBody
+                                break;
+                            case "/excluirBanco":
+                                action = "EXCLUIR_BANCO";
+                                requestBody = "EXCLUIR_BANCO-" + requestBody; // Ação EXCLUIR_BANCO como primeira parte
+                                                                              // do requestBody
+                                break;
+                            default:
+                                responseMessage = "Ação não reconhecida para DELETE.";
+                        }
+                        break;
+                    default:
+                        responseMessage = "Método HTTP não suportado.";
+                        exchange.sendResponseHeaders(405, responseMessage.getBytes().length);
+                        break;
                 }
-            } else {
-                // Método HTTP não suportado
-                responseMessage = "Método HTTP não suportado.";
-                exchange.sendResponseHeaders(405, responseMessage.getBytes().length);
-                OutputStream os = exchange.getResponseBody();
-                os.write(responseMessage.getBytes());
-                os.close();
-                return; // Retorna para não executar o restante do código
+
+                // Se a ação for válida, chama handleAction
+                if (!action.isEmpty() && responseMessage.isEmpty()) {
+                    String[] parts = messageProcessor.processMessage(requestBody);
+                    System.out.println("Mensagem para ser processada: " + requestBody);
+                    responseMessage = bankActionHandler.handleAction(action, parts);
+                    System.out.println("resposta banck action: " + responseMessage);
+                }
+
+                if (responseMessage.contains("OK")) {
+                    exchange.sendResponseHeaders(200, responseMessage.getBytes().length);
+                } else {
+
+                    System.out.println("400");
+                    exchange.sendResponseHeaders(400, responseMessage.getBytes().length);
+                }
+
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseMessage.getBytes());
+                }
+
+            } catch (SQLException e) {
+                System.out.println("Entrou no sql exception");
+                responseMessage = "Erro no banco de dados: " + e.getMessage();
+                exchange.sendResponseHeaders(500, responseMessage.getBytes().length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseMessage.getBytes());
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Number Format exception");
+                responseMessage = "Valor inválido: " + e.getMessage();
+                exchange.sendResponseHeaders(400, responseMessage.getBytes().length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseMessage.getBytes());
+                }
+            } catch (Exception e) {
+
+                System.out.println("Exception exception");
+                responseMessage = "Erro inesperado: " + e.getMessage();
+                exchange.sendResponseHeaders(500, responseMessage.getBytes().length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(responseMessage.getBytes());
+                }
             }
-
-            // Responde ao cliente
-            exchange.sendResponseHeaders(200, responseMessage.getBytes().length);
-            OutputStream os = exchange.getResponseBody();
-            os.write(responseMessage.getBytes());
-            os.close();
-        }
-
-        private String handleGetRequest(HttpExchange exchange) {
-            // Lógica para lidar com a requisição GET
-            // Aqui, você pode recuperar dados do BankManager ou processar de outra forma
-            String query = exchange.getRequestURI().getQuery();
-            String responseMessage = "Requisição GET recebida.";
-
-            // Processamento do query, se necessário
-            if (query != null) {
-                // Por exemplo, você pode retornar informações específicas com base no query
-                responseMessage += " Query: " + query;
-            }
-
-            return responseMessage;
         }
     }
 }

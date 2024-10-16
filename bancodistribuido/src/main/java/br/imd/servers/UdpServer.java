@@ -9,19 +9,16 @@ import java.util.concurrent.TimeUnit;
 
 import br.imd.processors.BankActionHandler;
 import br.imd.processors.MessageProcessor;
-import br.imd.service.BankManager;
 
 public class UdpServer {
-    private BankManager bankManager;
     private MessageProcessor messageProcessor;
     private BankActionHandler actionHandler; // Adicionando o manipulador de ações
     private ScheduledExecutorService heartbeatExecutor;
     private int serverPort; // Armazenar a porta do servidor
 
     public UdpServer(int port) {
-        this.bankManager = new BankManager();
         this.messageProcessor = new MessageProcessor();
-        this.actionHandler = new BankActionHandler(bankManager); // Instanciando o manipulador de ações
+        this.actionHandler = new BankActionHandler(); // Instanciando o manipulador de ações
         this.serverPort = port; // Armazenando a porta do servidor
 
         // Iniciar o executor agendado para enviar heartbeat
