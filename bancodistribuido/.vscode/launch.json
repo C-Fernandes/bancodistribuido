@@ -37,6 +37,12 @@
             "request": "launch",
             "mainClass": "br.imd.servers.UdpServer",
             "projectName": "bancodistribuido"
+        }, {
+            "type": "java",
+            "name": "TransferenciaService",
+            "request": "launch",
+            "mainClass": "br.imd.service.TransferenciaService",
+            "projectName": "bancodistribuido"
         }
     ]
 }

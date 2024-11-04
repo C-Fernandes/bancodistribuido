@@ -102,10 +102,10 @@ public class ContaRepository {
         return contas;
     }
 
-    public void atualizarSaldo(Conta conta) throws SQLException {
+    public void atualizarSaldo(Connection conn , Conta conta) throws SQLException {
         String sql = "UPDATE Conta SET saldo = ? WHERE banco = ? AND agencia = ? AND conta = ?";
 
-        try (Connection conn = dataBaseConnection.getConnection();
+        try (
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setDouble(1, conta.getSaldo());
@@ -120,7 +120,7 @@ public class ContaRepository {
             System.out.println("Saldo atualizado com sucesso para a conta: " + conta.getConta());
 
         } catch (SQLException e) {
-            System.err.println("Erro ao atualizar saldo: " + e.getMessage());
+            System.err.println("Erro ao atualizar saldo de conta: " + conta.getConta() + ". " + e.getMessage());
             throw e;
         }
     }

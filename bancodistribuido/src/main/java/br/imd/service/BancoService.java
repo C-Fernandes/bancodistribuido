@@ -34,7 +34,8 @@ public class BancoService {
         Conta conta = contaService.buscarContaEBloquear(conn, bancoNome, agencia, contaNum);
 
         if (conta == null) {
-            conn.rollback();
+            conn.rollback();System.out.println("Problema com conta destino.");
+
             throw new IllegalArgumentException("Conta de destino não encontrada no banco informado.");
         }
 

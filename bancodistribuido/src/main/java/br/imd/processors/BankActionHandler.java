@@ -18,8 +18,6 @@ public class BankActionHandler {
     public String handleAction(String action, String[] parts) throws SQLException {
 
         switch (action.toUpperCase().trim()) {
-            case "TRANSFERIR":
-                return handleTransferir(parts);
             case "SACAR":
                 return handleSacar(parts);
             case "CRIAR_CONTA":
@@ -38,23 +36,6 @@ public class BankActionHandler {
                 return handleExcluirBanco(parts);
             default:
                 return "Ação não reconhecida.";
-        }
-    }
-
-    private String handleTransferir(String[] parts) {
-        if (parts.length == 8) {
-            String bancoOrigem = parts[1];
-            String agenciaOrigem = parts[2];
-            String contaOrigem = parts[3];
-            String bancoDestino = parts[4];
-            String agenciaDestino = parts[5];
-            String contaDestino = parts[6];
-            double valor = Double.parseDouble(parts[7]);
-
-            return bankManager.transferir(bancoOrigem, agenciaOrigem, contaOrigem,
-                    bancoDestino, agenciaDestino, contaDestino, valor);
-        } else {
-            return "Parâmetros inválidos para transferência.";
         }
     }
 

@@ -85,9 +85,9 @@ public class ContaService {
         return contaRepository.listarContas();
     }
 
-    public void atualizarSaldo(Conta conta) throws SQLException {
-
-        contaRepository.atualizarSaldo(conta);
+    public void atualizarSaldo(Connection conn, Conta conta) throws SQLException {
+System.out.println("Entrou em atualizar saldo");
+        contaRepository.atualizarSaldo(conn, conta);
     }
 
     public void excluirConta(Connection conn, String banco, String agencia, String numero) throws SQLException {

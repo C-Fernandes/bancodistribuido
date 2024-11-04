@@ -32,7 +32,7 @@ public class UdpServer {
             System.out.println("Servidor UDP escutando na porta " + serverPort);
 
             while (true) {
-                byte[] receiveData = new byte[1024];
+                byte[] receiveData = new byte[1024*2];
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 socket.receive(receivePacket);
                 String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
@@ -41,12 +41,37 @@ public class UdpServer {
                 String[] parts = messageProcessor.processMessage(message);
                 String responseMessage;
 
-                if (parts != null) {
+                if (parts != null && parts.length > 0) {
                     String action = parts[0];
-                    responseMessage = actionHandler.handleAction(action, parts);
+
+                    // Verifica se é uma transferência
+                    if (action.equalsIgnoreCase("TRANSFERIR")) {
+                        System.out.println("Redirecionando comando TRANSFERIR para a porta 4 (UDP)");
+                        try (DatagramSocket transferSocket = new DatagramSocket()) {
+                            InetAddress address = InetAddress.getByName("localhost");
+                            byte[] transferData = message.getBytes();
+
+                            // Cria um pacote UDP e envia para a porta 4
+                            DatagramPacket transferPacket = new DatagramPacket(transferData, transferData.length, address, 4001);
+                            transferSocket.send(transferPacket);
+
+                            // Espera pela resposta do servidor da porta 4
+                            byte[] transferResponseData = new byte[1024];
+                            DatagramPacket transferResponsePacket = new DatagramPacket(transferResponseData, transferResponseData.length);
+                            transferSocket.receive(transferResponsePacket);
+                            responseMessage = new String(transferResponsePacket.getData(), 0, transferResponsePacket.getLength());
+                        } catch (Exception e) {
+                            responseMessage = "Erro ao redirecionar transferência para a porta 4: " + e.getMessage();
+                        }
+                    } else {
+                        // Caso não seja transferência, processa normalmente
+                        responseMessage = actionHandler.handleAction(action, parts);
+                    }
                 } else {
                     responseMessage = "Mensagem malformada.";
                 }
+
+                // Envia a resposta de volta para o cliente original
                 byte[] sendData = responseMessage.getBytes();
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();
@@ -58,6 +83,7 @@ public class UdpServer {
             e.printStackTrace();
         }
     }
+
 
     private void sendHeartbeat() {
         String heartbeatMessage = Integer.toString(serverPort);

@@ -18,10 +18,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -46,11 +44,10 @@ public class ApiGateway {
     }
 
     public void start() {
-
         new Thread(new Heartbeat(activeServers)).start();
 
         ExecutorService executor = new ThreadPoolExecutor(
-                100,
+                150,
                 300,
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>(1000),
@@ -66,8 +63,8 @@ public class ApiGateway {
         try {
             HttpServer httpServer = HttpServer.create(new InetSocketAddress(GATEWAY_PORT_HTTP), 0);
             httpServer.createContext("/", exchange -> {
-                if ("POST".equals(exchange.getRequestMethod()) || "GET".equals(exchange.getRequestMethod()) || "PUT"
-                        .equals(exchange.getRequestMethod())) {
+                if ("POST".equals(exchange.getRequestMethod()) || "GET".equals(exchange.getRequestMethod())
+                        || "PUT".equals(exchange.getRequestMethod())) {
                     executor.submit(() -> {
                         try {
                             handleHttpRequest(exchange);
@@ -94,7 +91,7 @@ public class ApiGateway {
         System.out.println("Gateway escutando UDP na porta " + GATEWAY_PORT_UDP);
         try (DatagramSocket udpSocket = new DatagramSocket(GATEWAY_PORT_UDP)) {
             while (true) {
-                byte[] receiveData = new byte[1024];
+                byte[] receiveData = new byte[1024 * 2];
                 DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                 udpSocket.receive(receivePacket);
                 executor.submit(() -> processUdpRequest(receivePacket, udpSocket));
@@ -110,7 +107,6 @@ public class ApiGateway {
             while (true) {
                 Socket clientSocket = tcpSocket.accept();
                 executor.submit(() -> processTcpRequest(clientSocket));
-
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -136,7 +132,7 @@ public class ApiGateway {
             }
         } catch (Exception e) {
             System.out.println(
-                    "Não foi possivel se conectar com o servidor: " + availableServerPort + ". " + e.getMessage());
+                    "Não foi possível se conectar com o servidor: " + availableServerPort + ". " + e.getMessage());
         }
 
         int responseCode = conn.getResponseCode();
@@ -155,7 +151,7 @@ public class ApiGateway {
         DatagramSocket serverUdpSocket = null;
         int allocatedPort = -1;
         try {
-            String request = new String(receivePacket.getData(), 0, receivePacket.getLength());
+            String request = new String(receivePacket.getData(), 0, receivePacket.getLength()).trim();
             System.out.println("Recebendo pacote UDP: " + request);
             allocatedPort = portManager.allocatePort();
 
@@ -175,7 +171,7 @@ public class ApiGateway {
                     availableServerPort);
             serverUdpSocket.send(sendPacket);
 
-            byte[] receiveData = new byte[1024];
+            byte[] receiveData = new byte[1024 * 2];
             DatagramPacket responsePacket = new DatagramPacket(receiveData, receiveData.length);
             serverUdpSocket.setSoTimeout(TIMEOUT);
 
@@ -183,16 +179,15 @@ public class ApiGateway {
             String response = new String(responsePacket.getData(), 0, responsePacket.getLength()).trim();
             System.out.println("Resposta recebida do servidor: " + response);
 
-            DatagramPacket clientResponsePacket = new DatagramPacket(response.getBytes(), response.length(),
+            DatagramPacket clientResponsePacket = new DatagramPacket(response.getBytes(), response.getBytes().length,
                     receivePacket.getAddress(), receivePacket.getPort());
             udpSocket.send(clientResponsePacket);
             System.out.println("Resposta enviada ao cliente.");
         } catch (SocketTimeoutException e) {
-            // System.err.println("Timeout ao esperar a resposta do servidor.");
+            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            // System.out.println("Terminando processo");
             if (allocatedPort != -1) {
                 portManager.releasePort(allocatedPort);
             }
@@ -207,53 +202,47 @@ public class ApiGateway {
                 PrintWriter outToClient = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
             String request = in.readLine();
-            System.out.println("(" + request + ")");
+            System.out.println("Requisição recebida do cliente: (" + request + ")");
+
+            if (request == null) {
+                return;
+            }
+
             try (Socket serverSocket = new Socket()) {
                 int availableServerPort = getAvailableServerPort();
-                System.out.println("Conectando ao servidor na porta: " +
-                        availableServerPort);
                 serverSocket.connect(new InetSocketAddress("localhost", availableServerPort), 5000);
 
                 PrintWriter outToServer = new PrintWriter(serverSocket.getOutputStream(), true);
                 outToServer.println(request);
+                outToServer.flush();
 
                 BufferedReader serverResponse = new BufferedReader(
                         new InputStreamReader(serverSocket.getInputStream()));
                 String response = serverResponse.readLine();
-                System.out.println("Response: " + response);
+                System.out.println("Response do servidor: " + response);
 
                 if (response != null) {
                     outToClient.println(response);
-                    System.out.println("Resposta enviada ao cliente: " + response);
-                } else {
-                    System.err.println("Resposta do servidor é null.");
                 }
             } catch (SocketTimeoutException e) {
-                System.err.println("Timeout ao esperar a resposta do servidor.");
-
-            } catch (Exception e) {
-                e.getMessage();
+                System.err.println("Timeout ao se conectar ao servidor.");
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private int getAvailableServerPort() {
-        synchronized (activeServers) {
-            if (activeServers.isEmpty()) {
-                throw new RuntimeException("Nenhum servidor disponível.");
-            }
-
-            List<Integer> activeServersList = new ArrayList<>(activeServers);
-            int size = activeServersList.size();
-            int currentIndex = serverIndex.get();
-
-            int selectedPort = activeServersList.get(currentIndex % size);
-            serverIndex.set((currentIndex + 1) % size);
-            return selectedPort;
-        }
+        int index = serverIndex.getAndIncrement() % activeServers.size();
+        List<Integer> availablePorts = new ArrayList<>(activeServers);
+        return availablePorts.get(index);
     }
-
 }

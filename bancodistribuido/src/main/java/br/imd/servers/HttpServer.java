@@ -78,7 +78,6 @@ public class HTTPServer {
             String method = exchange.getRequestMethod();
             try {
                 String requestBody = new String(exchange.getRequestBody().readAllBytes());
-
                 String action = "";
 
                 switch (method) {
@@ -110,6 +109,8 @@ public class HTTPServer {
                             case "/transferir":
                                 action = "TRANSFERIR";
                                 requestBody = "TRANSFERIR-" + requestBody;
+                                // Aguardar resposta da transferência
+                                responseMessage = sendHttpTransferRequest(requestBody);
                                 break;
                             default:
                                 responseMessage = "Ação não reconhecida para PUT.";
@@ -185,6 +186,34 @@ public class HTTPServer {
                     os.write(responseMessage.getBytes());
                 }
             }
+        }
+
+        private String sendHttpTransferRequest(String requestBody) {
+            String responseMessage = "";
+            try {
+                URL url = new URL("http://localhost:4001/transferir"); // Substitua pela URL correta
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", "text/plain");
+
+                try (OutputStream os = connection.getOutputStream()) {
+                    os.write(requestBody.getBytes());
+                    os.flush();
+                }
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    // Lê a resposta do servidor de transferência
+                    responseMessage = new String(connection.getInputStream().readAllBytes());
+                    responseMessage = "Transferência realizada com sucesso: " + responseMessage;
+                } else {
+                    responseMessage = "Erro ao redirecionar transferência: " + responseCode;
+                }
+            } catch (IOException e) {
+                responseMessage = "Erro ao enviar requisição de transferência: " + e.getMessage();
+            }
+            return responseMessage;
         }
     }
 }

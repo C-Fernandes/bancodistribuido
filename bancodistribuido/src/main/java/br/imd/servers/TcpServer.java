@@ -82,7 +82,6 @@ class Handler implements Runnable {
 
         try {
             br = getReader(socket);
-
             String recv = br.readLine();
 
             if (recv == null) {
@@ -93,12 +92,30 @@ class Handler implements Runnable {
             String[] parts = messageProcessor.processMessage(recv);
             if (parts.length == 0) {
                 responseMessage = "Comando inválido.";
-
             }
 
-            if (responseMessage.equals("")) {
-                responseMessage = actionHandler.handleAction(parts[0], parts);
+            // Verifica se o comando é uma transferência
+            if (parts[0].equalsIgnoreCase("TRANSFERIR")) {
+                // Envia para a porta 4
+                System.out.println("Enviando para transferir");
+                try (Socket transferSocket = new Socket("localhost", 4001)) {
+                    PrintWriter transferOut = new PrintWriter(transferSocket.getOutputStream(), true);
+                    transferOut.println(recv);
+
+                    // Recebe a resposta da porta 4
+                    BufferedReader transferIn = new BufferedReader(
+                            new InputStreamReader(transferSocket.getInputStream()));
+                    responseMessage = transferIn.readLine();
+                } catch (IOException e) {
+                    responseMessage = "Erro ao redirecionar para a porta 4: " + e.getMessage();
+                }
+            } else {
+                // Caso não seja uma transferência, processa normalmente
+                if (responseMessage.equals("")) {
+                    responseMessage = actionHandler.handleAction(parts[0], parts);
+                }
             }
+
             System.out.println("mensagem enviada:" + responseMessage);
             out = new PrintWriter(socket.getOutputStream(), true);
             out.println(responseMessage);
